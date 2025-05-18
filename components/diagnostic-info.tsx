@@ -36,4 +36,3 @@ export function DiagnosticInfo({ courseData, searchParams, isLoading }: Diagnost
     </div>
   )
 }
-

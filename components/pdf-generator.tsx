@@ -106,9 +106,122 @@ function addKSALogo(doc: jsPDF, x: number, y: number, width: number) {
   })
 }
 
-// Improve the createDrillBox function for better aesthetics
-function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: any, playerName: string): number {
-  const padding = 12 // Increased padding for better aesthetics
+// Enhanced function to generate drill-specific messages
+function generateDrillSpecificMessage(drill: any, playerName: string, dayNumber: number): string {
+  // Create a mapping of drill names to specific messages about what they help with
+  const drillSpecificMessages = {
+    // Form shooting drills
+    "Form Shooting": `This fundamental drill builds the foundation of your shot mechanics, ${playerName}. Focus on keeping your elbow under the ball and follow through with your fingers pointing to the target. This creates muscle memory for proper form that will transfer to all your shots.`,
+    "1 Hand Shooting": `By removing your guide hand, ${playerName}, this drill isolates your shooting hand mechanics. Pay attention to the feeling of the ball rolling off your fingertips with proper backspin. This directly addresses inconsistencies in your release point.`,
+    "Guide Hand Positioning": `Your guide hand should support without interfering, ${playerName}. This drill helps eliminate the thumb flick or push that's affecting your accuracy. Position your guide hand on the side of the ball with fingers pointing up, never toward the basket.`,
+
+    // Balance drills
+    "Wide Stance Shots": `A stable base is crucial for shooting consistency, ${playerName}. This drill helps you feel proper weight distribution and balance throughout your shot. Notice how a wider stance creates stability but sacrifices some power - finding your optimal width is key.`,
+    "1 Foot Drops": `Single-leg balance training develops proprioception and core stability, ${playerName}. This translates directly to better balance when shooting off movement or with defenders nearby. Focus on maintaining your shooting form despite the balance challenge.`,
+    "1 2 Step With Drop": `This footwork pattern mimics game situations, ${playerName}. By mastering this specific stepping sequence, you'll develop consistent mechanics when catching and shooting in games. The drop creates rhythm and power transfer from legs to upper body.`,
+
+    // Arc and trajectory drills
+    "Flat Side Backboard Shots": `Your shot arc has been too flat, ${playerName}. This drill forces you to create proper trajectory by using the backboard as feedback. A higher arc increases your shooting percentage by creating a softer touch and better angle into the basket.`,
+    "Skinny Side Backboard Shots": `This precision drill develops both arc and accuracy, ${playerName}. The narrow target on the backboard requires perfect trajectory and touch. This addresses your tendency to shoot with inconsistent arc heights.`,
+    "Ball Raises": `The starting position of your shot affects everything that follows, ${playerName}. This drill eliminates unnecessary dipping motions and establishes a consistent shot pocket. Focus on bringing the ball up in one fluid motion without dropping it first.`,
+
+    // Rhythm drills
+    "Ball Does Not Stop": `Continuous motion creates shooting rhythm, ${playerName}. This drill eliminates the hitch in your shot by keeping the ball moving relative to the ground. Notice how this creates a smoother release and more consistent power generation.`,
+    "1 2 Through": `This drill connects your lower and upper body timing, ${playerName}. The 1-2 step creates rhythm while the "through" motion ensures continuous upward momentum. This addresses your tendency to pause during your shooting motion.`,
+    "Slow Motion 1-2-Thru @ Hoop": `Slowing down helps you feel each component of your shot, ${playerName}. This deliberate practice builds awareness of proper sequencing. Focus on the connection between your footwork and hand position throughout the motion.`,
+
+    // Elbow alignment drills
+    "Stabilize The Shooting Elbow": `Elbow alignment is crucial for shot consistency, ${playerName}. This drill helps you keep your elbow under the ball rather than flaring out. Notice how proper alignment creates a straight line from elbow to fingertips toward the basket.`,
+    "3 Exercises to Stabilize Elbow": `These progressive exercises address your elbow positioning, ${playerName}. By working backward from the finish position, you'll develop proper alignment throughout your shot. This directly improves your shooting accuracy and consistency.`,
+    "Elbow Push Out With Stop": `This drill isolates proper elbow mechanics during your shot, ${playerName}. The push out motion with a deliberate stop helps you feel the correct positioning. This addresses your tendency to let your elbow drift during your shooting motion.`,
+
+    // Game transfer drills
+    "Catch and Shoot With Pass Fake": `Game situations require quick decisions, ${playerName}. This drill develops your ability to maintain shooting mechanics while adding decision-making elements. Focus on keeping your form consistent despite the added complexity.`,
+    "Jump Turns With Pass": `Creating separation is crucial in games, ${playerName}. This drill helps you maintain balance and alignment when turning to receive passes. This directly translates to catch-and-shoot opportunities in game situations.`,
+    "Momentum Shots": `Game shots rarely happen from a static position, ${playerName}. This drill teaches you to harness forward momentum while maintaining shooting mechanics. Focus on converting your forward energy into upward energy through your legs.`,
+
+    // Advanced movement drills
+    "Sprint to Corner": `This drill simulates game-speed movement to shooting spots, ${playerName}. Focus on quickly transitioning from running to shooting stance while maintaining balance. This addresses your struggle to shoot consistently after movement.`,
+    "Lateral Movement into DDS": `Defenders often force lateral movement before shots, ${playerName}. This drill helps you maintain mechanics after sideways movement. Focus on quickly squaring your shoulders and hips to the basket after the lateral move.`,
+    "90 Degree Elevator Drops": `This complex movement pattern challenges your balance and coordination, ${playerName}. By mastering this drill, you'll develop the body control needed for difficult game shots. Focus on maintaining vertical alignment despite the rotational movement.`,
+
+    // Free throw specific
+    "Free Throws": `Free throws are the foundation of shooting confidence, ${playerName}. This drill builds a consistent routine and mental approach. Focus on repeating the exact same process every time - from stance to follow-through.`,
+
+    // Default messages for drills not specifically mapped
+    default_form: `This form-focused drill helps establish proper mechanics, ${playerName}. Pay attention to the details of your shooting motion and build consistency through repetition. Quality over quantity is essential here.`,
+    default_balance: `Balance is the foundation of consistent shooting, ${playerName}. This drill challenges your stability to improve your base. Notice how proper weight distribution affects the consistency of your release.`,
+    default_game: `Game-speed application is crucial for skill transfer, ${playerName}. This drill simulates game situations to test your mechanics under pressure. Focus on maintaining your form despite the added complexity.`,
+    default_rhythm: `Shooting rhythm creates consistency, ${playerName}. This drill develops the timing between your lower and upper body. Focus on creating a smooth, continuous motion without hitches or pauses.`,
+    default_advanced: `This advanced drill challenges your mechanics under complex conditions, ${playerName}. By mastering this movement pattern, you'll be prepared for difficult game situations. Focus on maintaining your core shooting principles despite the challenge.`,
+  }
+
+  // Coaching wisdom to add variety (will be appended to some messages)
+  const coachingWisdom = [
+    "Remember, mastery comes through deliberate practice.",
+    "The mind leads the body - visualize success before each attempt.",
+    "Small improvements compound over time.",
+    "Be present with each rep. It's not just about doing, it's about being mindful while doing.",
+    "The shot begins the moment you begin to move. Your preparation is everything.",
+    "Sometimes the quickest way to get where you want to go is slowly. Master the fundamentals first.",
+    "Shooting IS movement. The better you get at moving, the better you'll get at shooting.",
+    "Progress in anything is not always linear. Trust the process.",
+    "The ball doesn't stop relative to the ground. Keep that upward momentum flowing through your shot.",
+    "Your body follows where your eyes lead. Focus on the target.",
+    "Consistency comes from repeatable mechanics.",
+  ]
+
+  // Get the drill name
+  const drillName = drill.name
+
+  // Look up the specific message for this drill
+  let message = drillSpecificMessages[drillName]
+
+  // If no specific message exists, categorize the drill and use a default message
+  if (!message) {
+    const drillNameLower = drillName.toLowerCase()
+
+    if (drillNameLower.includes("form") || drillNameLower.includes("hand") || drillNameLower.includes("guide")) {
+      message = drillSpecificMessages.default_form
+    } else if (
+      drillNameLower.includes("balance") ||
+      drillNameLower.includes("stance") ||
+      drillNameLower.includes("foot")
+    ) {
+      message = drillSpecificMessages.default_balance
+    } else if (drillNameLower.includes("game") || drillNameLower.includes("catch") || drillNameLower.includes("fake")) {
+      message = drillSpecificMessages.default_game
+    } else if (
+      drillNameLower.includes("rhythm") ||
+      drillNameLower.includes("flow") ||
+      drillNameLower.includes("through")
+    ) {
+      message = drillSpecificMessages.default_rhythm
+    } else {
+      message = drillSpecificMessages.default_advanced
+    }
+  }
+
+  // Add coaching wisdom to some messages based on day number (for variety)
+  if (dayNumber % 3 === 0) {
+    const wisdomIndex = (dayNumber + drillName.length) % coachingWisdom.length
+    message += " " + coachingWisdom[wisdomIndex]
+  }
+
+  return message
+}
+
+// Improved createDrillBox function with better spacing
+function createDrillBox(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  width: number,
+  drill: any,
+  playerName: string,
+  dayNumber: number,
+): number {
+  const padding = 14 // Increased padding for better aesthetics and to prevent text overlap
   const innerWidth = width - padding * 2
 
   // Start with initial y position for content
@@ -117,21 +230,21 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
 
   // Calculate content height first without drawing
   // Drill name
-  contentHeight += 10 // Name height - increased
-  contentHeight += 10 // Line + spacing - increased
+  contentHeight += 12 // Name height - increased
+  contentHeight += 12 // Line + spacing - increased
 
   // Focus area
-  contentHeight += 8 // Increased
+  contentHeight += 10 // Increased
 
   // Sets/Reps
-  contentHeight += 8 // Increased
+  contentHeight += 10 // Increased
 
   // Time
-  contentHeight += 12 // Increased
+  contentHeight += 14 // Increased
 
   // Video link (if it exists)
   if (drill.video && drill.video.url) {
-    contentHeight += 8 // Video label - increased
+    contentHeight += 10 // Video label - increased
 
     // Ensure the URL is properly formatted
     let videoUrl = drill.video.url
@@ -142,21 +255,21 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
     // Calculate link text height
     const linkText = drill.video.title || "Watch drill demonstration"
     const linkLines = doc.splitTextToSize(linkText, innerWidth)
-    contentHeight += linkLines.length * 9 * 0.5 + 6 // Increased spacing
+    contentHeight += linkLines.length * 9 * 0.5 + 8 // Increased spacing
   }
 
   // Addressing struggle section
-  if (drill.explanation) {
-    contentHeight += 8 // Spacing - increased
-    contentHeight += 8 // Label - increased
+  // Generate the drill-specific message
+  const drillSpecificMessage = generateDrillSpecificMessage(drill, playerName, dayNumber)
 
-    // Calculate explanation text height
-    const explanationLines = doc.splitTextToSize(drill.explanation, innerWidth)
-    contentHeight += explanationLines.length * 6 // Increased line height
-  }
+  // Calculate the height needed for this message
+  const explanationLines = doc.splitTextToSize(drillSpecificMessage, innerWidth)
+  contentHeight += 10 // Spacing before label - increased
+  contentHeight += 10 // Label - increased
+  contentHeight += explanationLines.length * 7 // Increased line height for better readability
 
   // Add final padding
-  contentHeight += padding
+  contentHeight += padding + 4 // Extra padding at the bottom
 
   // Now draw the box with the calculated height
   // Box background
@@ -176,11 +289,11 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
   doc.setFont("times", "bold") // Times New Roman bold
   doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]) // Using accent color instead of black
   doc.text(drill.name, x + padding, currentY)
-  currentY += 10 // Increased spacing
+  currentY += 12 // Increased spacing
 
   // Line under name
   drawLine(doc, x + padding, currentY, x + width - padding, currentY, 0.75, colors.accent) // Using accent color
-  currentY += 10 // Increased spacing
+  currentY += 12 // Increased spacing
 
   // Focus area
   doc.setFontSize(11) // Increased font size
@@ -192,7 +305,7 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
   const focusText = drill.focus || "General improvement"
   const focusLines = doc.splitTextToSize(focusText, innerWidth - 40) // Increased offset
   doc.text(focusLines, x + padding + 40, currentY) // Increased offset
-  currentY += 8 // Increased spacing
+  currentY += 10 // Increased spacing
 
   // Sets/Reps
   doc.setFont("times", "bold") // Times New Roman bold
@@ -202,7 +315,7 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
   doc.setFont("times", "normal") // Times New Roman normal
   const setsRepsText = !drill.sets || !drill.reps ? "As Many As Possible" : `${drill.sets}, ${drill.reps}`
   doc.text(setsRepsText, x + padding + 40, currentY) // Increased offset
-  currentY += 8 // Increased spacing
+  currentY += 10 // Increased spacing
 
   // Time (estimated)
   doc.setFont("times", "bold") // Times New Roman bold
@@ -211,7 +324,7 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
 
   doc.setFont("times", "normal") // Times New Roman normal
   doc.text("10-15 minutes", x + padding + 40, currentY) // Increased offset
-  currentY += 12 // Increased spacing
+  currentY += 14 // Increased spacing
 
   // Video link (if it exists)
   if (drill.video && drill.video.url) {
@@ -219,7 +332,7 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
     doc.setFont("times", "bold") // Times New Roman bold
     doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
     doc.text("VIDEO:", x + padding, currentY)
-    currentY += 8 // Increased spacing
+    currentY += 10 // Increased spacing
 
     // Ensure the URL is properly formatted
     let videoUrl = drill.video.url
@@ -229,26 +342,25 @@ function createDrillBox(doc: jsPDF, x: number, y: number, width: number, drill: 
 
     // Add clickable link
     const linkText = drill.video.title || "Watch drill demonstration"
-    currentY = addLink(doc, linkText, videoUrl, x + padding, currentY, innerWidth, 10, colors.accent) + 6 // Using accent color
+    currentY = addLink(doc, linkText, videoUrl, x + padding, currentY, innerWidth, 10, colors.accent) + 8 // Using accent color, increased spacing
   }
 
   // Addressing struggle section
-  if (drill.explanation) {
-    currentY += 8 // Increased spacing
-    doc.setFontSize(11) // Increased font size
-    doc.setFont("times", "bold") // Times New Roman bold
-    doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
-    doc.text("ADDRESSING YOUR STRUGGLE:", x + padding, currentY)
-    currentY += 8 // Increased spacing
+  currentY += 10 // Increased spacing
+  doc.setFontSize(11) // Increased font size
+  doc.setFont("times", "bold") // Times New Roman bold
+  doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
+  doc.text("ADDRESSING YOUR STRUGGLE:", x + padding, currentY)
+  currentY += 10 // Increased spacing
 
-    doc.setFont("times", "normal") // Times New Roman normal
-    doc.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2])
-    const explanationLines = doc.splitTextToSize(drill.explanation, innerWidth)
-    explanationLines.forEach((line) => {
-      doc.text(line, x + padding, currentY)
-      currentY += 6 // Increased line height
-    })
-  }
+  doc.setFont("times", "normal") // Times New Roman normal
+  doc.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2])
+
+  // Use the drill-specific message
+  explanationLines.forEach((line) => {
+    doc.text(line, x + padding, currentY)
+    currentY += 7 // Increased line height for better readability
+  })
 
   return contentHeight
 }
@@ -386,7 +498,9 @@ export async function generatePdf(
     })
 
     // ===== DAILY TRAINING PAGES =====
-    for (const day of courseData.days) {
+    for (let i = 0; i < courseData.days.length; i++) {
+      const day = courseData.days[i]
+      const dayNumber = day.day || i + 1 // Use day.day if available, otherwise use index + 1
       doc.addPage()
 
       // Add a subtle header background - changed to very light blue
@@ -431,7 +545,7 @@ export async function generatePdf(
           unit: "mm",
           format: "a4",
         })
-        const estimatedHeight = createDrillBox(tempDoc, 0, 0, drillBoxWidth, drill, playerInfo.name)
+        const estimatedHeight = createDrillBox(tempDoc, 0, 0, drillBoxWidth, drill, playerInfo.name, dayNumber)
 
         // Check if we need a new page - leave extra space for notes
         if (y + estimatedHeight + 30 > pageHeight - 30) {
@@ -458,7 +572,7 @@ export async function generatePdf(
         }
 
         // Now create the actual drill box
-        const drillBoxHeight = createDrillBox(doc, margin, y, drillBoxWidth, drill, playerInfo.name)
+        const drillBoxHeight = createDrillBox(doc, margin, y, drillBoxWidth, drill, playerInfo.name, dayNumber)
         y += drillBoxHeight + 15 // Increased spacing between drill boxes
       }
 
@@ -561,4 +675,3 @@ export function PdfGenerator({ courseData, playerName = "Player" }: PdfGenerator
     </Button>
   )
 }
-

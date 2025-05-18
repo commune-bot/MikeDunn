@@ -266,4 +266,3 @@ export function getRelatedIssues(identifiedIssues: ShootingIssue[]): ShootingIss
   // Return the top 3 related issues
   return relatedIssues.slice(0, 3)
 }
-

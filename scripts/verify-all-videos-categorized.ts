@@ -56,4 +56,3 @@ function verifyAllVideosHaveSkillLevels() {
 
 // Run the verification
 verifyAllVideosHaveSkillLevels()
-

@@ -192,4 +192,3 @@ export async function generateCourseWithAI(
     return createFallbackCourse(playerName, issues, skillLevel)
   }
 }
-

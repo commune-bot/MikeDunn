@@ -107,4 +107,3 @@ export function PdfGeneratorDebug({ courseData, playerName = "Player" }: PdfGene
     </div>
   )
 }
-

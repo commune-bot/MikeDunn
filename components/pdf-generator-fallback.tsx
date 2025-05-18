@@ -42,4 +42,3 @@ export function PdfGeneratorFallback({ courseData, playerName = "Player" }: PdfG
     </Button>
   )
 }
-

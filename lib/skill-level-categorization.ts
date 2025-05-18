@@ -168,4 +168,3 @@ export function setVideoSkillLevel(title: string, skillLevel: "beginner" | "inte
   // Video not found
   return false
 }
-

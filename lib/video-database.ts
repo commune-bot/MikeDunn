@@ -1378,4 +1378,3 @@ export const loomExplanationVideos: VideoEntry[] = [
 
 // Combine the YouTube and Loom videos for the complete database
 export const allVideos = [...videoDatabase, ...loomExplanationVideos]
-

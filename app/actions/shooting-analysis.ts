@@ -71,4 +71,3 @@ function extractIssueDetails(description: string, issues: ShootingIssue[]): Reco
 
   return details
 }
-

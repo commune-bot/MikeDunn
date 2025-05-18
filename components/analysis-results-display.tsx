@@ -96,4 +96,3 @@ export function AnalysisResultsDisplay({ analysisResult }: AnalysisResultsDispla
     </Card>
   )
 }
-
