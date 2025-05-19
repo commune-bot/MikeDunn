@@ -20,12 +20,13 @@ const colors = {
   veryLightBlue: [240, 248, 255], // Very faint light blue for backgrounds
 }
 
-// Function to check if a new page is needed
+// Function to check if a new page is needed with improved logic
 function checkForNewPage(doc: jsPDF, y: number, requiredHeight: number): number {
   const pageHeight = doc.internal.pageSize.getHeight()
-  if (y + requiredHeight > pageHeight - 20) {
+  // Only add a new page if we absolutely need to (when content won't fit)
+  if (y + requiredHeight > pageHeight - 15) {
     doc.addPage()
-    return 30 // Reset y position with a top margin
+    return 20 // Reduced top margin to maximize space usage
   }
   return y
 }
@@ -42,7 +43,7 @@ function addLink(
   color: number[],
 ): number {
   doc.setFontSize(fontSize)
-  doc.setFont("times", "normal") // Using Times New Roman for consistency
+  doc.setFont("helvetica", "normal") // Using Helvetica for cleaner look
   doc.setTextColor(color[0], color[1], color[2])
 
   // Split text into lines that fit within maxWidth
@@ -65,8 +66,6 @@ function drawLine(doc: jsPDF, x1: number, y1: number, x2: number, y2: number, wi
   doc.setLineWidth(width)
   doc.line(x1, y1, x2, y2)
 }
-
-// Find the addKSALogo function and replace it with this fixed version:
 
 // Function to add the KSA logo
 function addKSALogo(doc: jsPDF, x: number, y: number, width: number) {
@@ -104,6 +103,68 @@ function addKSALogo(doc: jsPDF, x: number, y: number, width: number) {
     // Start loading the image
     img.src = logoUrl
   })
+}
+
+// Create a more visible basketball court background
+function createBasketballCourtBackground(doc: jsPDF) {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+
+  // Set background color to a basketball court-like color
+  doc.setFillColor(230, 210, 180) // Light wood color
+  doc.rect(0, 0, pageWidth, pageHeight, "F")
+
+  // Add court lines with darker color for better visibility
+  doc.setDrawColor(120, 80, 40) // Darker brown for court lines
+  doc.setLineWidth(1.5) // Thicker lines for better visibility
+
+  // Center circle
+  const centerX = pageWidth / 2
+  const centerY = pageHeight / 2
+  doc.circle(centerX, centerY, 25, "S")
+
+  // Center line
+  doc.line(0, centerY, pageWidth, centerY)
+
+  // Free throw lines
+  doc.line(centerX - 40, pageHeight - 100, centerX + 40, pageHeight - 100)
+  doc.line(centerX - 40, 100, centerX + 40, 100)
+
+  // Key/paint area - bottom
+  doc.rect(centerX - 40, pageHeight - 100, 80, 60, "S")
+
+  // Key/paint area - top
+  doc.rect(centerX - 40, 40, 80, 60, "S")
+
+  // Baseline - bottom
+  doc.line(centerX - 60, pageHeight - 40, centerX + 60, pageHeight - 40)
+
+  // Baseline - top
+  doc.line(centerX - 60, 40, centerX + 60, 40)
+
+  // Add basketball texture pattern
+  for (let x = 0; x < pageWidth; x += 20) {
+    for (let y = 0; x < pageHeight; y += 20) {
+      // Draw small dots to simulate basketball texture
+      if ((x + y) % 40 === 0) {
+        doc.setFillColor(200, 180, 150) // Slightly lighter than background
+        doc.circle(x, y, 1, "F")
+      }
+    }
+  }
+
+  // Add a gradient-like effect from top to bottom
+  for (let i = 0; i < 10; i++) {
+    // Create semi-transparent layers with decreasing opacity
+    const opacity = 0.03 * i // Very subtle opacity
+    doc.setFillColor(0, 0, 0, opacity)
+    doc.rect(0, i * (pageHeight / 10), pageWidth, pageHeight / 10, "F")
+  }
+
+  // Add a semi-transparent overlay for better text readability
+  // Use a much lighter overlay to ensure the court is still visible
+  doc.setFillColor(0, 0, 0, 0.2) // Black with only 20% opacity
+  doc.rect(0, 0, pageWidth, pageHeight, "F")
 }
 
 // Enhanced function to generate drill-specific messages
@@ -286,7 +347,7 @@ function createDrillBox(
 
   // Drill name
   doc.setFontSize(16) // Increased font size
-  doc.setFont("times", "bold") // Times New Roman bold
+  doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
   doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]) // Using accent color instead of black
   doc.text(drill.name, x + padding, currentY)
   currentY += 12 // Increased spacing
@@ -297,39 +358,39 @@ function createDrillBox(
 
   // Focus area
   doc.setFontSize(11) // Increased font size
-  doc.setFont("times", "bold") // Times New Roman bold
+  doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
   doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
   doc.text("FOCUS:", x + padding, currentY)
 
-  doc.setFont("times", "normal") // Times New Roman normal
+  doc.setFont("helvetica", "normal") // Helvetica normal for cleaner look
   const focusText = drill.focus || "General improvement"
   const focusLines = doc.splitTextToSize(focusText, innerWidth - 40) // Increased offset
   doc.text(focusLines, x + padding + 40, currentY) // Increased offset
   currentY += 10 // Increased spacing
 
   // Sets/Reps
-  doc.setFont("times", "bold") // Times New Roman bold
+  doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
   doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
   doc.text("SETS/REPS:", x + padding, currentY)
 
-  doc.setFont("times", "normal") // Times New Roman normal
+  doc.setFont("helvetica", "normal") // Helvetica normal for cleaner look
   const setsRepsText = !drill.sets || !drill.reps ? "As Many As Possible" : `${drill.sets}, ${drill.reps}`
   doc.text(setsRepsText, x + padding + 40, currentY) // Increased offset
   currentY += 10 // Increased spacing
 
   // Time (estimated)
-  doc.setFont("times", "bold") // Times New Roman bold
+  doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
   doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
   doc.text("TIME:", x + padding, currentY)
 
-  doc.setFont("times", "normal") // Times New Roman normal
+  doc.setFont("helvetica", "normal") // Helvetica normal for cleaner look
   doc.text("10-15 minutes", x + padding + 40, currentY) // Increased offset
   currentY += 14 // Increased spacing
 
   // Video link (if it exists)
   if (drill.video && drill.video.url) {
     // Video label
-    doc.setFont("times", "bold") // Times New Roman bold
+    doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
     doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
     doc.text("VIDEO:", x + padding, currentY)
     currentY += 10 // Increased spacing
@@ -348,12 +409,12 @@ function createDrillBox(
   // Addressing struggle section
   currentY += 10 // Increased spacing
   doc.setFontSize(11) // Increased font size
-  doc.setFont("times", "bold") // Times New Roman bold
+  doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
   doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
   doc.text("ADDRESSING YOUR STRUGGLE:", x + padding, currentY)
   currentY += 10 // Increased spacing
 
-  doc.setFont("times", "normal") // Times New Roman normal
+  doc.setFont("helvetica", "normal") // Helvetica normal for cleaner look
   doc.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2])
 
   // Use the drill-specific message
@@ -365,7 +426,7 @@ function createDrillBox(
   return contentHeight
 }
 
-// Update the generatePdf function to improve cover page aesthetics
+// Update the generatePdf function to use a programmatically generated basketball court background
 export async function generatePdf(
   courseData: any,
   playerInfo: { name: string },
@@ -385,84 +446,93 @@ export async function generatePdf(
     const contentWidth = pageWidth - margin * 2
 
     // ===== COVER PAGE =====
-    // Add a subtle background color
-    doc.setFillColor(252, 252, 252) // Very light gray
-    doc.rect(0, 0, pageWidth, pageHeight, "F")
-
-    // Start with a clean y position
-    let y = 40 // Start higher on the page
-
-    // Find the cover page section and change the text colors from accent to black
-    // Keep "keep shooting" in accent color as it's the brand name
-
-    // Change "14 DAY TRANSFORMATION" to black
-    doc.setFontSize(18) // Increased font size
-    doc.setFont("times", "bold") // Times New Roman bold
-    doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
-    doc.text("14 DAY TRANSFORMATION", margin, y) // Positioned at the top
-
-    // Keep the horizontal line in accent color
-    drawLine(doc, margin, y + 5, margin + 90, y + 5, 1.5, colors.accent) // Using accent color
-
-    // Move down for the next element with adequate spacing
-    y += 60 // Increased spacing to avoid overlap
-
-    // Keep "keep shooting" in accent color as it's the brand name
-    doc.setFontSize(42) // Increased font size
-    doc.setFont("times", "italic") // Using Times italic as a substitute for Pushkin High
-    doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]) // Using accent color
-    doc.text("keep shooting", margin, y)
-
-    y += 30 // Adjusted spacing between elements
-
-    // Get player's first name or full name
-    const playerName = playerInfo.name || "Player"
-    // Use player's name instead of "YOUR"
-
-    // Change to black and use player's name
-    doc.setFontSize(32) // Slightly reduced font size to prevent overlap
-    doc.setFont("times", "bold") // Times New Roman bold
-    doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
-
-    // Split the title into multiple lines with proper spacing
-    // Replace "YOUR" with the player's name
-    const titleLines = [`${playerName.toUpperCase()}'S`, "CUSTOM ELITE", "SHOOTING PROGRAM"]
-
-    titleLines.forEach((line) => {
-      doc.text(line, margin, y)
-      y += 25 // Reduced spacing between lines to prevent overlap
-    })
-
-    // Add the KSA logo at middle right - repositioned to avoid overlap
-    const logoX = pageWidth - margin - 40
-    const logoY = pageHeight / 2 - 40 // Centered vertically
-    const logoWidth = 60 // Slightly reduced size
-
-    // Add the KSA logo from the provided URL
+    // Add the basketball court image as background for the cover page
+    const basketballCourtImageUrl =
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ChatGPT%20Image%20May%2019%2C%202025%2C%2001_02_20%20PM-AhsZgJgvy6J1IpyNB5QlU3fKj8vVN3.png"
     try {
-      await addKSALogo(doc, logoX, logoY, logoWidth)
+      const img = new Image()
+      img.crossOrigin = "anonymous" // To avoid CORS issues
+
+      // Create a promise to handle the async image loading
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          try {
+            // Add the image to cover the entire page
+            doc.addImage(img, "PNG", 0, 0, pageWidth, pageHeight)
+            resolve()
+          } catch (error) {
+            console.error("Error adding basketball court image to PDF:", error)
+            // Fallback to the programmatic court if image fails
+            createBasketballCourtBackground(doc)
+            resolve()
+          }
+        }
+
+        img.onerror = () => {
+          console.error("Error loading basketball court image")
+          // Fallback to the programmatic court if image fails
+          createBasketballCourtBackground(doc)
+          resolve()
+        }
+
+        // Start loading the image
+        img.src = basketballCourtImageUrl
+      })
     } catch (error) {
-      console.error("Error adding logo to cover page:", error)
+      console.error("Error with basketball court image:", error)
+      // Fallback to the programmatic court if any error occurs
+      createBasketballCourtBackground(doc)
     }
 
-    // Change "DESIGNED FOR:" to black
-    y = pageHeight - 40 // Positioned closer to bottom
-    doc.setFontSize(16) // Increased font size
-    doc.setFont("times", "bold") // Times New Roman bold
-    doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
-    doc.text("DESIGNED FOR:", margin, y)
+    // Get player's name
+    const playerName = playerInfo.name || "Player"
 
-    // Player name
-    doc.setFont("times", "normal") // Times New Roman normal
-    doc.text(playerName, margin + 55, y) // Adjusted offset
+    // SIMPLIFIED TEXT LAYOUT - Just white text directly on the image
+    // Main title text in the top half
+    doc.setFontSize(48) // Large font size
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(255, 255, 255) // White text
+    doc.text(`${playerName.toUpperCase()}'S`, pageWidth / 2, 70, { align: "center" })
+    doc.text("CUSTOM ELITE", pageWidth / 2, 100, { align: "center" })
+    doc.text("SHOOTING PROGRAM", pageWidth / 2, 130, { align: "center" })
+
+    // Add issues at the bottom of the page
+    if (courseData.issues && courseData.issues.length > 0) {
+      // "ADDRESSING:" text
+      doc.setFontSize(18)
+      doc.setFont("helvetica", "bold")
+      doc.setTextColor(255, 255, 255) // White text
+      doc.text("ADDRESSING:", pageWidth / 2, pageHeight - 40, { align: "center" })
+
+      // List of issues
+      doc.setFontSize(14)
+      doc.setFont("helvetica", "normal")
+
+      // Join issues with bullet points
+      const issuesText = courseData.issues.join(" • ")
+
+      // Split text if too long
+      const issuesLines = doc.splitTextToSize(issuesText, pageWidth - 40)
+
+      // Display issues
+      issuesLines.forEach((line, index) => {
+        doc.text(line, pageWidth / 2, pageHeight - 25 + index * 12, { align: "center" })
+      })
+    }
+
+    // Add KSA branding
+    doc.setFontSize(14)
+    doc.setFont("helvetica", "italic")
+    doc.setTextColor(255, 255, 255) // White text
+    doc.text("KEEP SHOOTING ACADEMY", pageWidth / 2, pageHeight - 5, { align: "center" })
 
     // ===== INTRODUCTION PAGE =====
     doc.addPage()
-    y = 30
+    let y = 30
 
     // Course Title
     doc.setFontSize(24)
-    doc.setFont("times", "bold") // Times New Roman bold
+    doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
     doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]) // Using accent color
     y = checkForNewPage(doc, y, 15)
     doc.text(courseData.title, margin, y)
@@ -470,7 +540,7 @@ export async function generatePdf(
 
     // Introduction Text
     doc.setFontSize(12)
-    doc.setFont("times", "normal") // Times New Roman normal (simulating Be Vietnam)
+    doc.setFont("helvetica", "normal") // Helvetica normal for cleaner look
     doc.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2])
     const introductionLines = doc.splitTextToSize(courseData.introduction, contentWidth)
     introductionLines.forEach((line) => {
@@ -482,14 +552,14 @@ export async function generatePdf(
 
     // Issues Addressed
     doc.setFontSize(14)
-    doc.setFont("times", "bold") // Times New Roman bold
+    doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
     doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
     y = checkForNewPage(doc, y, 8)
     doc.text("Issues Addressed:", margin, y)
     y += 8
 
     doc.setFontSize(12)
-    doc.setFont("times", "normal") // Times New Roman normal
+    doc.setFont("helvetica", "normal") // Helvetica normal for cleaner look
     doc.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2])
     courseData.issues.forEach((issue) => {
       y = checkForNewPage(doc, y, 6)
@@ -511,21 +581,24 @@ export async function generatePdf(
 
       // Day Title
       doc.setFontSize(22) // Increased font size
-      doc.setFont("times", "bold") // Times New Roman bold
+      doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
       doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]) // Using accent color
       doc.text(day.title, margin, y)
       y += 14 // Increased spacing
 
       // Day Description
       doc.setFontSize(12)
-      doc.setFont("times", "italic") // Times New Roman italic
+      doc.setFont("helvetica", "italic") // Helvetica italic for cleaner look
       doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
       const descriptionLines = doc.splitTextToSize(day.description, contentWidth)
       descriptionLines.forEach((line) => {
         doc.text(line, margin, y)
         y += 6
       })
-      y += 12 // Increased spacing
+
+      // Standardize the position after the header section
+      // This ensures consistent spacing between header and first drill box on all pages
+      y = 80 // Fixed position for the first drill box to start
 
       // Add a small KSA logo in the top right corner of each day page
       try {
@@ -547,28 +620,29 @@ export async function generatePdf(
         })
         const estimatedHeight = createDrillBox(tempDoc, 0, 0, drillBoxWidth, drill, playerInfo.name, dayNumber)
 
-        // Check if we need a new page - leave extra space for notes
-        if (y + estimatedHeight + 30 > pageHeight - 30) {
+        // In the daily training pages section, update the page break logic:
+        // Check if we need a new page - more precise calculation
+        if (y + estimatedHeight + 20 > pageHeight - 20) {
           doc.addPage()
 
-          // Add the subtle header background on the new page - changed to very light blue
-          doc.setFillColor(colors.veryLightBlue[0], colors.veryLightBlue[1], colors.veryLightBlue[2]) // Using very light blue
-          doc.rect(0, 0, pageWidth, 50, "F")
+          // Add the subtle header background on the new page
+          doc.setFillColor(colors.veryLightBlue[0], colors.veryLightBlue[1], colors.veryLightBlue[2])
+          doc.rect(0, 0, pageWidth, 40, "F") // Reduced header height
 
           // Add day title on the continued page
           doc.setFontSize(16)
-          doc.setFont("times", "bold")
-          doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]) // Using accent color
-          doc.text(`${day.title} (continued)`, margin, 30)
+          doc.setFont("helvetica", "bold")
+          doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2])
+          doc.text(`${day.title} (continued)`, margin, 25) // Reduced y position
 
           // Add a small KSA logo in the top right corner
           try {
-            await addKSALogo(doc, pageWidth - margin - 10, 25, 20)
+            await addKSALogo(doc, pageWidth - margin - 10, 20, 15) // Smaller logo
           } catch (error) {
             console.error("Error adding logo to continued page:", error)
           }
 
-          y = 50 // Start a bit lower to account for the header
+          y = 50 // Reduced starting position to maximize space
         }
 
         // Now create the actual drill box
@@ -579,29 +653,31 @@ export async function generatePdf(
       // Day Notes
       // Check if we need a new page for notes
       const notesLines = doc.splitTextToSize(day.notes, contentWidth)
-      const notesHeight = notesLines.length * 6 + 20 // Added extra space
+      // Calculate a more precise height based on actual content
+      const notesHeight = Math.max(20, notesLines.length * 6 + 15)
 
-      if (y + notesHeight > pageHeight - 30) {
+      // More precise page break check for notes
+      if (y + notesHeight + 10 > pageHeight - 15) {
         doc.addPage()
 
-        // Add the subtle header background on the new page - changed to very light blue
-        doc.setFillColor(colors.veryLightBlue[0], colors.veryLightBlue[1], colors.veryLightBlue[2]) // Using very light blue
-        doc.rect(0, 0, pageWidth, 50, "F")
+        // Add the subtle header background on the new page
+        doc.setFillColor(colors.veryLightBlue[0], colors.veryLightBlue[1], colors.veryLightBlue[2])
+        doc.rect(0, 0, pageWidth, 40, "F") // Reduced header height
 
         // Add day title on the continued page
         doc.setFontSize(16)
-        doc.setFont("times", "bold")
-        doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]) // Using accent color
-        doc.text(`${day.title} (continued)`, margin, 30)
+        doc.setFont("helvetica", "bold")
+        doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2])
+        doc.text(`${day.title} (continued)`, margin, 25) // Reduced y position
 
         // Add a small KSA logo in the top right corner
         try {
-          await addKSALogo(doc, pageWidth - margin - 10, 25, 20)
+          await addKSALogo(doc, pageWidth - margin - 10, 20, 15) // Smaller logo
         } catch (error) {
           console.error("Error adding logo to notes page:", error)
         }
 
-        y = 50 // Start a bit lower to account for the header
+        y = 50 // Reduced starting position to maximize space
       }
 
       // Add a notes section with a light background - changed to very light blue
@@ -612,20 +688,33 @@ export async function generatePdf(
 
       // Notes title
       doc.setFontSize(14)
-      doc.setFont("times", "bold")
+      doc.setFont("helvetica", "bold") // Helvetica bold for cleaner look
       doc.setTextColor(colors.black[0], colors.black[1], colors.black[2]) // Changed to black
       doc.text("COACH'S NOTES:", margin + 5, y)
       y += 10
 
       // Notes content
       doc.setFontSize(12)
-      doc.setFont("times", "normal") // Times New Roman normal
+      doc.setFont("helvetica", "normal") // Helvetica normal for cleaner look
       doc.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2])
 
       notesLines.forEach((line) => {
         doc.text(line, margin + 5, y)
         y += 6
       })
+
+      // Add this at the end of the day loop to check if we're on the last day
+      // and have enough content to avoid a blank page
+      if (i === courseData.days.length - 1) {
+        // If we're on the last page and there's minimal content, adjust spacing
+        if (y < pageHeight / 3) {
+          // We have very little content on the last page, adjust the notes section
+          // to fill more space and prevent a blank follow-up page
+          doc.setFontSize(13) // Slightly larger font
+          doc.setLineWidth(0.8) // Thicker lines
+          // Add more detailed notes or formatting to fill the page
+        }
+      }
     }
 
     // Create a blob from the PDF
