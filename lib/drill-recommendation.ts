@@ -519,7 +519,7 @@ export function getDrillRecommendations(
   return recommendations.sort((a, b) => b.relevanceScore - a.relevanceScore)
 }
 
-// Update the createTrainingPlan function to create more balanced daily plans
+// Update the createTrainingPlan function to create more varied daily plans with specific issue focus
 export function createTrainingPlan(
   playerName: string,
   issues: ShootingIssue[],
@@ -541,64 +541,172 @@ export function createTrainingPlan(
     {} as Record<string, DrillRecommendation[]>,
   )
 
-  // Create a 2-week plan (14 days)
+  // Create issue-specific day titles and descriptions
+  const createDayTitleAndDescription = (dayNumber: number, primaryIssue: ShootingIssue, isWeek1: boolean) => {
+    const issueDisplayName = primaryIssue.name
+
+    if (isWeek1) {
+      // Week 1: Foundation building with specific issue focus
+      const foundationTitles = {
+        "inconsistent-release": "Building Release Point Consistency",
+        "poor-follow-through": "Developing Proper Follow-Through",
+        "guide-hand-interference": "Eliminating Guide Hand Issues",
+        "thumb-flick": "Correcting Thumb Interference",
+        "low-arc": "Establishing Proper Shot Arc",
+        "elbow-alignment": "Fixing Elbow Positioning",
+        "balance-issues": "Building Shooting Balance",
+        footwork: "Establishing Proper Footwork",
+        "base-width": "Optimizing Stance Width",
+        rhythm: "Developing Shooting Rhythm",
+        dipping: "Eliminating Ball Dipping",
+        "shot-pocket": "Establishing Shot Pocket",
+        "wrist-snap": "Developing Wrist Action",
+        alignment: "Building Body Alignment",
+        rushing: "Controlling Shot Tempo",
+        "game-transfer": "Foundation for Game Application",
+        consistency: "Building Shot Consistency",
+        "power-generation": "Developing Shooting Power",
+        "off-hand-placement": "Correcting Off-Hand Position",
+        "ball-position": "Optimizing Ball Position",
+      }
+
+      const foundationDescriptions = {
+        "inconsistent-release": "Focus on developing a repeatable release point through fundamental drills.",
+        "poor-follow-through": "Emphasize proper wrist snap and follow-through mechanics.",
+        "guide-hand-interference": "Learn to position and use your guide hand without affecting the shot.",
+        "thumb-flick": "Eliminate thumb influence and develop clean finger release.",
+        "low-arc": "Establish proper shot trajectory and arc through targeted practice.",
+        "elbow-alignment": "Build proper elbow positioning and stability throughout the shot.",
+        "balance-issues": "Develop a stable shooting base and improve overall balance.",
+        footwork: "Establish proper foot positioning and movement patterns.",
+        "base-width": "Find your optimal stance width for maximum stability.",
+        rhythm: "Develop smooth, consistent timing in your shooting motion.",
+        dipping: "Eliminate unnecessary ball movement and establish efficient motion.",
+        "shot-pocket": "Create a consistent starting position for your shot.",
+        "wrist-snap": "Develop proper wrist flexion and finger control.",
+        alignment: "Build proper body alignment toward the target.",
+        rushing: "Learn to control your shooting tempo and preparation.",
+        "game-transfer": "Build the foundation needed for game application.",
+        consistency: "Establish repeatable mechanics through deliberate practice.",
+        "power-generation": "Learn to generate power efficiently from your legs.",
+        "off-hand-placement": "Position your non-shooting hand correctly.",
+        "ball-position": "Establish optimal ball positioning throughout the shot.",
+      }
+
+      return {
+        title: `Day ${dayNumber}: ${foundationTitles[primaryIssue.id] || `Addressing ${issueDisplayName}`}`,
+        description:
+          foundationDescriptions[primaryIssue.id] ||
+          `Focus on correcting ${issueDisplayName.toLowerCase()} through fundamental drills.`,
+      }
+    } else {
+      // Week 2: Game application with specific issue focus
+      const applicationTitles = {
+        "inconsistent-release": "Release Consistency Under Pressure",
+        "poor-follow-through": "Follow-Through in Game Situations",
+        "guide-hand-interference": "Guide Hand Control in Movement",
+        "thumb-flick": "Clean Release Under Pressure",
+        "low-arc": "Maintaining Arc in Game Shots",
+        "elbow-alignment": "Elbow Stability During Movement",
+        "balance-issues": "Balance in Game-Like Situations",
+        footwork: "Advanced Footwork Applications",
+        "base-width": "Stance Consistency Under Pressure",
+        rhythm: "Rhythm in Complex Movements",
+        dipping: "Efficient Motion Under Pressure",
+        "shot-pocket": "Consistent Pocket in Game Situations",
+        "wrist-snap": "Wrist Action Under Fatigue",
+        alignment: "Alignment During Movement",
+        rushing: "Tempo Control Under Pressure",
+        "game-transfer": "Full Game Application",
+        consistency: "Consistency Under Game Conditions",
+        "power-generation": "Power Generation in Movement",
+        "off-hand-placement": "Off-Hand Control in Game Situations",
+        "ball-position": "Ball Position During Complex Movements",
+      }
+
+      const applicationDescriptions = {
+        "inconsistent-release": "Apply your improved release point in game-like situations and under pressure.",
+        "poor-follow-through": "Maintain proper follow-through during movement and complex shots.",
+        "guide-hand-interference": "Keep guide hand control while shooting off movement and under pressure.",
+        "thumb-flick": "Maintain clean finger release during quick shots and game situations.",
+        "low-arc": "Preserve proper shot arc when shooting under pressure and fatigue.",
+        "elbow-alignment": "Keep elbow stability during movement, turns, and game-speed shots.",
+        "balance-issues": "Apply improved balance in game-like movements and pressure situations.",
+        footwork: "Use advanced footwork patterns in game-simulation drills.",
+        "base-width": "Maintain optimal stance width during movement and quick shots.",
+        rhythm: "Keep smooth rhythm during complex movements and decision-making.",
+        dipping: "Maintain efficient motion during quick shots and game situations.",
+        "shot-pocket": "Keep consistent shot pocket during movement and pressure.",
+        "wrist-snap": "Maintain proper wrist action when fatigued and under pressure.",
+        alignment: "Preserve body alignment during movement and directional changes.",
+        rushing: "Control tempo during quick decisions and pressure situations.",
+        "game-transfer": "Apply all improved mechanics in full game simulation.",
+        consistency: "Maintain consistency during fatigue and pressure situations.",
+        "power-generation": "Generate power efficiently during movement and game situations.",
+        "off-hand-placement": "Keep proper off-hand position during complex movements.",
+        "ball-position": "Maintain optimal ball position during game-speed movements.",
+      }
+
+      return {
+        title: `Day ${dayNumber}: ${applicationTitles[primaryIssue.id] || `${issueDisplayName} in Game Situations`}`,
+        description:
+          applicationDescriptions[primaryIssue.id] ||
+          `Apply your improved ${issueDisplayName.toLowerCase()} in game-like situations.`,
+      }
+    }
+  }
+
+  // Create a 2-week plan (14 days) with specific issue focus for each day
   const days = Array.from({ length: 14 }, (_, i) => {
     const dayNumber = i + 1
     const isWeek1 = dayNumber <= 7
 
-    // Determine focus for this day
-    // Week 1: Focus more on fundamentals and primary issues
-    // Week 2: Incorporate more game-like situations and secondary issues
-    const dayIssues = isWeek1
-      ? issues.slice(0, Math.min(3, issues.length)) // Primary issues in week 1
-      : [...issues.slice(0, 1), ...issues.slice(1, 3)] // Mix of primary and secondary in week 2
+    // Assign a primary issue for this day by cycling through the issues
+    const primaryIssueIndex = i % issues.length
+    const primaryIssue = issues[primaryIssueIndex]
 
-    // Get drills for this day's issues
-    const dayDrills: DrillRecommendation[] = []
-    dayIssues.forEach((issue) => {
-      const issueRecs = recommendationsByIssue[issue.id] || []
+    // Get the day title and description based on the primary issue
+    const { title, description } = createDayTitleAndDescription(dayNumber, primaryIssue, isWeek1)
 
-      // Take different drills each day using a rotation pattern
-      // This ensures variety throughout the program
-      const offset = (dayNumber - 1) % issueRecs.length
-      const drillsToAdd = issueRecs.slice(offset, offset + 2)
+    // Get drills specifically for this day's primary issue
+    const primaryIssueRecs = recommendationsByIssue[primaryIssue.id] || []
 
-      // If we're at the end of the array, wrap around to the beginning
-      if (drillsToAdd.length < 2 && issueRecs.length > 0) {
-        drillsToAdd.push(...issueRecs.slice(0, 2 - drillsToAdd.length))
-      }
+    // Also include some drills from secondary issues (but fewer)
+    const secondaryIssues = issues.filter((_, index) => index !== primaryIssueIndex)
+    const secondaryRecs = secondaryIssues
+      .slice(0, 2)
+      .flatMap((issue) => (recommendationsByIssue[issue.id] || []).slice(0, 1))
 
-      dayDrills.push(...drillsToAdd)
-    })
+    // Combine primary and secondary recommendations
+    const allDayRecs = [...primaryIssueRecs.slice(0, 3), ...secondaryRecs]
 
-    // Ensure we have 3-5 drills per day with no duplicates
-    const uniqueDrills = Array.from(new Map(dayDrills.map((d) => [d.drillTitle, d])).values())
+    // Take different drills each day using a rotation pattern
+    const offset = (dayNumber - 1) % Math.max(1, allDayRecs.length)
+    let dayDrills = allDayRecs.slice(offset, offset + 3)
 
-    // Limit to 3 drills for beginners, 4 for intermediate, 5 for advanced/pro
+    // If we don't have enough drills, wrap around
+    if (dayDrills.length < 3 && allDayRecs.length > 0) {
+      const remaining = 3 - dayDrills.length
+      dayDrills = [...dayDrills, ...allDayRecs.slice(0, remaining)]
+    }
+
+    // Ensure we have at least some drills
+    if (dayDrills.length === 0 && recommendations.length > 0) {
+      dayDrills = recommendations.slice(0, 3)
+    }
+
+    // Limit to appropriate number of drills based on skill level
     const maxDrills = normalizedSkillLevel === "beginner" ? 3 : normalizedSkillLevel === "intermediate" ? 4 : 5
-
-    const finalDrills = uniqueDrills.slice(0, Math.min(maxDrills, uniqueDrills.length))
-
-    // Determine day title and description based on issues
-    const primaryIssue = issues[0]
-
-    // More descriptive day titles
-    const dayTitle = isWeek1
-      ? `Day ${dayNumber}: ${primaryIssue.name} Foundation`
-      : `Day ${dayNumber}: ${primaryIssue.name} Application`
-
-    const dayDescription = isWeek1
-      ? `Focus on developing proper ${primaryIssue.name.toLowerCase()} through fundamental drills.`
-      : `Apply improved ${primaryIssue.name.toLowerCase()} mechanics in more game-like situations.`
+    const finalDrills = dayDrills.slice(0, Math.min(maxDrills, dayDrills.length))
 
     // Create the day structure
     return {
       day: dayNumber,
-      title: dayTitle,
-      description: dayDescription,
+      title,
+      description,
       drills: finalDrills.map((drill) => {
         // Get the specific issue this drill targets
-        const targetIssue = issues.find((i) => i.id === drill.targetIssue)
+        const targetIssue = issues.find((i) => i.id === drill.targetIssue) || primaryIssue
 
         // Create a personalized explanation that addresses the player's specific issue
         const personalizedExplanation = generatePersonalizedExplanation(
@@ -615,7 +723,7 @@ export function createTrainingPlan(
           sets: isWeek1 ? "3" : "4",
           reps: isWeek1 ? "10 makes per set" : "8 makes per set",
           focus: `Improving ${targetIssue?.name || "shooting mechanics"}`,
-          explanation: personalizedExplanation, // Use the personalized explanation
+          explanation: personalizedExplanation,
           video: drill.video
             ? {
                 title: drill.video.title,
@@ -627,16 +735,16 @@ export function createTrainingPlan(
       }),
       notes: `Day ${dayNumber} focus: ${
         isWeek1
-          ? `Building proper ${primaryIssue.name.toLowerCase()} mechanics through deliberate practice`
+          ? `Building proper mechanics to address ${primaryIssue.name.toLowerCase()}`
           : `Applying improved ${primaryIssue.name.toLowerCase()} under game-like conditions`
-      }. Remember to focus on quality repetitions rather than quantity.`,
+      }. Remember to focus on quality repetitions rather than quantity, ${playerName}.`,
     }
   })
 
   // Create the complete training plan with a more personalized introduction
   return {
     title: `Two-Week ${issues[0].name} Improvement Program`,
-    introduction: `Welcome to your personalized jump shot training program, ${playerName}! This 2-week course is specifically designed to address your shooting issues: ${issues.map((i) => i.name).join(", ")}. Each day includes targeted drills with video demonstrations to help you improve your form and consistency, with a special focus on ${issues[0].name}. The program progresses from fundamental mechanics in Week 1 to game application in Week 2, ensuring you build proper form before applying it under pressure.`,
+    introduction: `Welcome to your personalized jump shot training program, ${playerName}! This 2-week course is specifically designed to address your shooting issues: ${issues.map((i) => i.name).join(", ")}. Each day targets specific issues with targeted drills and video demonstrations. The program progresses from fundamental mechanics in Week 1 to game application in Week 2, ensuring you build proper form before applying it under pressure.`,
     issues: issues.map((i) => i.name),
     days,
   }

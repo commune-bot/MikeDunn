@@ -1,7 +1,7 @@
-import { analyzeShootingIssues, getRelatedIssues } from "@/lib/shooting-analysis"
+import { analyzeShootingIssues } from "@/lib/shooting-analysis"
 import { getDrillRecommendations, createTrainingPlan } from "@/lib/drill-recommendation"
 
-// Remove the createFallbackCourse function and replace generateCourseWithAI with proper analysis
+// Updated to only address the issues that are actually identified from user input
 export async function generateCourseWithAI(
   playerName: string,
   issues: string[],
@@ -14,22 +14,26 @@ export async function generateCourseWithAI(
     // Step 1: Analyze the issues to identify specific shooting problems
     const identifiedIssues = analyzeShootingIssues(issuesDescription)
 
-    // Step 2: Get related issues that might not have been explicitly mentioned
-    const relatedIssues = getRelatedIssues(identifiedIssues)
+    // Step 2: ONLY use the issues that were actually identified from user input
+    // Do NOT add related issues unless they were explicitly mentioned
+    const issuesToAddress = identifiedIssues
 
-    // Step 3: Combine primary and related issues (limit related issues to top 2)
-    const allIssues = [...identifiedIssues, ...relatedIssues.slice(0, 2)]
+    // If no issues were identified from the analysis, fall back to creating issues from the raw input
+    if (issuesToAddress.length === 0) {
+      // Create a basic fallback that still only addresses what the user mentioned
+      return createBasicFallback(playerName, issues, skillLevel)
+    }
 
-    // Step 4: Get drill recommendations for the identified issues
+    // Step 3: Get drill recommendations for ONLY the identified issues
     const recommendations = getDrillRecommendations(
-      allIssues,
+      issuesToAddress,
       skillLevel as "beginner" | "intermediate" | "advanced" | "pro",
     )
 
-    // Step 5: Create a structured training plan
+    // Step 4: Create a structured training plan using ONLY the user's issues
     const trainingPlan = createTrainingPlan(
       playerName,
-      allIssues,
+      issuesToAddress,
       recommendations,
       skillLevel as "beginner" | "intermediate" | "advanced" | "pro",
     )
@@ -66,7 +70,7 @@ function createBasicFallback(playerName: string, issues: string[], skillLevel = 
     console.error("Error in basic fallback:", error)
   }
 
-  // Last resort fallback with generic content
+  // Last resort fallback with generic content that only addresses user's stated issues
   return {
     title: "Two-Week Jump Shot Training Program",
     introduction: `Welcome to your personalized jump shot training program, ${playerName}! This 2-week course addresses your shooting issues: ${issues.join(", ")}. The program progresses from fundamental mechanics in week 1 to game application in week 2.`,
