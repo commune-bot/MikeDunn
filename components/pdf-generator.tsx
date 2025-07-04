@@ -347,8 +347,20 @@ function generateCoachesNotes(day: any, dayNumber: number, playerName: string): 
   // Determine if we're in week 1 (fundamentals) or week 2 (application)
   const isWeek1 = dayNumber <= 7
 
-  // Get the drills for this day
-  const dayDrills = day.drills || []
+  // FIXED: Properly filter drills vs explanation videos
+  const dayDrills =
+    day.drills?.filter((item) => {
+      // Check if it's an explanation video by looking at sets/reps
+      const isExplanationVideo = item.sets === "N/A" || item.reps === "Watch & Understand"
+      return !isExplanationVideo // Only return actual drills
+    }) || []
+
+  const dayExplanations =
+    day.drills?.filter((item) => {
+      // Check if it's an explanation video
+      const isExplanationVideo = item.sets === "N/A" || item.reps === "Watch & Understand"
+      return isExplanationVideo // Only return explanation videos
+    }) || []
 
   // Drill knowledge base - detailed information about specific drills
   const drillKnowledge = {
@@ -403,7 +415,7 @@ function generateCoachesNotes(day: any, dayNumber: number, playerName: string): 
       "Use the simplest shot to ingrain consistency and mental toughness. Practice your exact routine and repeat the same motion every time.",
   }
 
-  // Identify the drills for this day
+  // Identify the drills for this day (only actual drills, not explanation videos)
   const drillNames = dayDrills.map((drill) => drill.name)
 
   // Create a personalized opening based on the day number and week
@@ -432,12 +444,18 @@ function generateCoachesNotes(day: any, dayNumber: number, playerName: string): 
     notesOpening = week2Openings[(dayNumber - 8) % week2Openings.length]
   }
 
-  // Create drill-specific notes for up to 3 drills from today's session
+  // Add explanation video notes if present (separate from drills)
+  let explanationNotes = ""
+  if (dayExplanations.length > 0) {
+    explanationNotes = `\n\nToday's explanation video (${dayExplanations[0].name}): Watch this carefully to understand the key concepts behind fixing your shooting issues. The visual breakdown will help you better execute the drills that follow.`
+  }
+
+  // Create drill-specific notes for up to 3 ACTUAL DRILLS from today's session
   let drillSpecificNotes = ""
-  const drillsToHighlight = Math.min(3, drillNames.length)
+  const drillsToHighlight = Math.min(3, dayDrills.length) // Only count actual drills
 
   for (let i = 0; i < drillsToHighlight; i++) {
-    const drillName = drillNames[i]
+    const drillName = dayDrills[i].name
 
     // Look for exact match first
     let drillNote = drillKnowledge[drillName]
@@ -505,7 +523,8 @@ function generateCoachesNotes(day: any, dayNumber: number, playerName: string): 
   notesClosing = closings[(dayNumber + drillNames.length) % closings.length]
 
   // Combine all parts into the final coach's notes with proper spacing
-  return notesOpening + drillSpecificNotes + notesClosing
+  // Put explanation notes first, then drill notes, then closing
+  return notesOpening + explanationNotes + drillSpecificNotes + notesClosing
 }
 
 // Find the createDrillBox function and replace it with this standardized version:

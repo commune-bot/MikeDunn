@@ -1,5 +1,5 @@
 import type { ShootingIssue } from "./shooting-analysis"
-import { type VideoEntry, videoDatabase, loomExplanationVideos } from "./video-database"
+import { type VideoEntry, videoDatabase, loomExplanationVideos, allVideos } from "./video-database"
 
 export interface DrillProgression {
   beginner: string[]
@@ -7,6 +7,7 @@ export interface DrillProgression {
   advanced: string[]
 }
 
+// Add workoutPhase to the interface
 export interface DrillRecommendation {
   drillId: string
   drillTitle: string
@@ -14,26 +15,59 @@ export interface DrillRecommendation {
   relevanceScore: number
   explanation: string
   video?: VideoEntry
-  category: "foundation" | "movement" | "application" | "conditioning"
+  category: "foundation" | "movement" | "application" | "conditioning" | "explanation"
   complexity: number
+  type: "drill" | "explanation"
+  workoutPhase: "explanation" | "warmup" | "skill" | "finisher"
+}
+
+// Define the workout phase for each drill
+const drillWorkoutPhases: Record<string, "warmup" | "skill" | "finisher"> = {
+  // Warm-up / Foundational Drills
+  "1 Hand Shooting": "warmup",
+  "Form Shooting": "warmup",
+  "Ball Raises": "warmup",
+  "Wide Stance Shots": "warmup",
+  "Wrist Flips": "warmup",
+
+  // Core Skill Drills
+  "1 2 Through": "skill",
+  "1 2 Step With Drop": "skill",
+  "Jump Turns With Pass": "skill",
+  "Dribble 1-2 Step": "skill",
+  "Pullback 1-2 Step": "skill",
+  "90 Degree 1 Position Turn": "skill",
+  "180 Degree 1 Position Turn": "skill",
+  "Cliff Walk (1 Position)": "skill",
+  "Forward 1 Position Jog": "skill",
+  "Backward 1 Position Jog": "skill",
+  "Catch and Shoot With Pass Fake": "skill",
+  "Jump Turns With A Pass": "skill",
+  "Momentum Shots": "skill",
+  "Sprint to Corner": "skill",
+  "Lateral Movement into DDS": "skill",
+  "Ghost Screen into Back Pedal": "skill",
+  Rollouts: "skill",
+  "Catch and Shoot (Drop, Left Right, Right Left)": "skill",
+  "Backpedal Catch and Shoot": "skill",
+  "1 Foot Drops": "skill",
+  "1 Foot Elevator Drops": "skill",
+
+  // Finisher / Conditioning Drills
+  "Free Throws": "finisher",
+  "Rapid Fire 1 Minute @ Each of 5 Spots": "finisher",
+  "100 3's": "finisher",
+  "Wiper Shooting": "finisher",
+  "3 Minute 3's": "finisher",
+  "3 in a Row 5 Spots": "finisher",
+  "2 In a Row 5 Spots": "finisher",
+  "The Gauntlet": "finisher",
+  "Full Court Threes": "finisher",
 }
 
 // Enhanced drill categorization for better workout flow
 const drillCategories = {
-  foundation: [
-    "1 Hand Shooting",
-    "Guide Hand Positioning (KSS)",
-    "Form Shooting",
-    "Ball Raises",
-    "Free Throws",
-    "Wide Stance Shots",
-    "Stabilize The Shooting Elbow",
-    "3 Exercises to Stabilize Elbow and Keep Ball Moving",
-    "Ball Does Not Stop (KSS)",
-    "Wrist Flips",
-    "Layering in the Guide Hand",
-    "Adding Guide Hand - One Hand Shots",
-  ],
+  foundation: ["1 Hand Shooting", "Form Shooting", "Ball Raises", "Free Throws", "Wide Stance Shots", "Wrist Flips"],
   movement: [
     "1 2 Through",
     "1 2 Step With Drop",
@@ -138,7 +172,7 @@ const issueToDrillMap: Record<string, DrillProgression> = {
   "wrist-snap": {
     beginner: ["1 Hand Shooting", "Wrist Flips", "Free Throws"],
     intermediate: ["Ball Does Not Stop (KSS)", "Stabilize The Shooting Elbow", "1 2 Through"],
-    advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With A Pass"],
+    advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With Pass"],
   },
   alignment: {
     beginner: ["Wide Stance Shots", "Free Throws", "1 2 Step With Drop"],
@@ -585,140 +619,210 @@ function generatePersonalizedExplanation(
   return `${skillPhrase} ${issue.name.toLowerCase()}. ${baseExplanation} ${phasePhrase} ${issue.name.toLowerCase()}. ${outcome} ${mikeDunnPhrase}`
 }
 
-// Update the getDrillRecommendations function to include categorization and complexity
+// A definitive list of titles for videos that are conceptual explanations, not drills.
+// UPDATED: Only the 6 true explanation videos
+const EXPLANATION_TITLES = new Set([
+  "Ball Does Not Stop (KSS)",
+  "Stabilize The Shooting Elbow",
+  "Guide Hand Positioning (KSS)",
+  "Wrist Flexibility",
+  "Free Throw Keys!",
+  "3 Exercises to Stabilize Elbow and Keep Ball Moving",
+])
+
+// UPDATED: Map explanation videos to the specific issues they address
+const EXPLANATION_TO_ISSUES: Record<string, string[]> = {
+  "Ball Does Not Stop (KSS)": ["rhythm", "dipping", "guide-hand-interference", "consistency"],
+  "Stabilize The Shooting Elbow": ["elbow-alignment", "inconsistent-release", "low-arc", "poor-follow-through"],
+  "Guide Hand Positioning (KSS)": ["guide-hand-interference", "thumb-flick", "off-hand-placement"],
+  "Wrist Flexibility": ["wrist-snap", "poor-follow-through", "thumb-flick"],
+  "Free Throw Keys!": ["consistency", "poor-follow-through", "alignment", "rushing"],
+  "3 Exercises to Stabilize Elbow and Keep Ball Moving": ["elbow-alignment", "rhythm", "poor-follow-through"],
+}
+
+// New function to classify videos based on title and a definitive list.
+function classifyVideoType(title: string): "drill" | "explanation" {
+  if (EXPLANATION_TITLES.has(title)) {
+    return "explanation"
+  }
+
+  // Everything else is a drill
+  return "drill"
+}
+
+// UPDATED: This function now only includes explanation videos that specifically address the player's issues
 export function getDrillRecommendations(
   issues: ShootingIssue[],
   skillLevel: "beginner" | "intermediate" | "advanced" | "pro" = "intermediate",
-): DrillRecommendation[] {
-  // If skillLevel is "pro", treat it as "advanced"
+): { drills: DrillRecommendation[]; explanations: DrillRecommendation[] } {
   const normalizedSkillLevel = skillLevel === "pro" ? "advanced" : skillLevel
+  const drillRecs: DrillRecommendation[] = []
+  const explanationRecs: DrillRecommendation[] = []
+  const addedDrillTitles = new Set<string>()
+  const addedExplanationTitles = new Set<string>()
 
-  const recommendations: DrillRecommendation[] = []
+  // Get the issue IDs for easier lookup
+  const issueIds = new Set(issues.map((issue) => issue.id))
 
-  // Process each issue with priority weighting
-  issues.forEach((issue, issueIndex) => {
-    // Primary issues (first in the list) get higher relevance
-    const issuePriorityMultiplier = Math.max(1, 3 - issueIndex) // 3, 2, 1, 1, 1...
-
-    // Get the appropriate drills for the skill level
+  const allRecommendedTitles = new Set<string>()
+  issues.forEach((issue) => {
     const drillsForIssue = issueToDrillMap[issue.id]?.[normalizedSkillLevel] || []
-
-    // Add each drill to recommendations with explanations and improved relevance scoring
-    drillsForIssue.forEach((drillTitle, drillIndex) => {
-      // Find the video entry for this drill
-      const video = findVideoForDrill(drillTitle)
-
-      // Get the explanation for why this drill helps with this issue
-      const explanation =
-        drillExplanations[drillTitle]?.[issue.id] ||
-        drillExplanations[drillTitle]?.["default"] ||
-        `Addresses ${issue.name} through targeted practice.`
-
-      // Calculate relevance score based on issue priority and drill position
-      // Drills earlier in the list for each issue are considered more relevant
-      const positionScore = Math.max(1, 5 - drillIndex) / 5 // 1.0, 0.8, 0.6, 0.4, 0.2...
-      const relevanceScore = issuePriorityMultiplier * positionScore
-
-      // Categorize the drill and get complexity
-      const category = categorizeDrill(drillTitle)
-      const complexity = getComplexityScore(drillTitle, category)
-
-      // Check if this drill is already in recommendations
-      const existingRec = recommendations.find((rec) => rec.drillTitle === drillTitle)
-
-      if (existingRec) {
-        // If this drill addresses multiple issues, increase its relevance score
-        // and update the explanation to mention both issues
-        existingRec.relevanceScore += relevanceScore * 0.5 // Add half the score to avoid overweighting
-        existingRec.explanation = `This drill addresses multiple issues including ${issue.name} and ${issues.find((i) => i.id === existingRec.targetIssue)?.name}.`
-      } else {
-        // Add to recommendations
-        recommendations.push({
-          drillId: drillTitle.toLowerCase().replace(/\s+/g, "-"),
-          drillTitle,
-          targetIssue: issue.id,
-          relevanceScore,
-          explanation,
-          video,
-          category,
-          complexity,
-        })
-      }
-    })
+    drillsForIssue.forEach((title) => allRecommendedTitles.add(title))
   })
 
-  // Sort by relevance score (higher scores first)
-  return recommendations.sort((a, b) => b.relevanceScore - a.relevanceScore)
+  // Process all videos, prioritizing those in the recommendation map
+  const allContent = [...Array.from(allRecommendedTitles), ...allVideos.map((v) => v.title)]
+
+  for (const title of allContent) {
+    const video = allVideos.find((v) => v.title === title)
+    if (!video) continue
+
+    const videoType = classifyVideoType(title)
+    const targetIssue = issues.find((issue) =>
+      (issueToDrillMap[issue.id]?.[normalizedSkillLevel] || []).includes(title),
+    )
+
+    if (videoType === "explanation") {
+      if (addedExplanationTitles.has(title)) continue
+
+      // CRITICAL: Only include explanation videos that specifically address the player's issues
+      const explanationIssues = EXPLANATION_TO_ISSUES[title] || []
+      const addressesPlayerIssue = explanationIssues.some((issueId) => issueIds.has(issueId))
+
+      if (addressesPlayerIssue) {
+        // Find which of the player's issues this explanation addresses
+        const relevantIssue = issues.find((issue) => explanationIssues.includes(issue.id))
+
+        explanationRecs.push({
+          drillId: title.toLowerCase().replace(/\s+/g, "-"),
+          drillTitle: title,
+          targetIssue: relevantIssue?.id || issues[0].id,
+          relevanceScore: relevantIssue ? 3 : 1,
+          explanation: `This video explains the core concepts behind fixing ${relevantIssue?.name || "your issues"}.`,
+          video,
+          category: "explanation",
+          complexity: 1,
+          type: "explanation",
+          workoutPhase: "explanation",
+        })
+        addedExplanationTitles.add(title)
+      }
+      // If the explanation doesn't address any of the player's issues, skip it entirely
+    } else {
+      // It's a drill
+      if (addedDrillTitles.has(title)) continue
+      const explanation =
+        drillExplanations[title]?.[targetIssue?.id || ""] ||
+        drillExplanations[title]?.["default"] ||
+        `Addresses ${targetIssue?.name || "your issues"} through targeted practice.`
+      const relevanceScore = targetIssue ? 3 : 1
+      const category = categorizeDrill(title)
+      const complexity = getComplexityScore(title, category)
+      const workoutPhase = drillWorkoutPhases[title] || "skill"
+
+      drillRecs.push({
+        drillId: title.toLowerCase().replace(/\s+/g, "-"),
+        drillTitle: title,
+        targetIssue: targetIssue?.id || issues[0].id,
+        relevanceScore,
+        explanation,
+        video,
+        category,
+        complexity,
+        type: "drill",
+        workoutPhase,
+      })
+      addedDrillTitles.add(title)
+    }
+  }
+
+  return {
+    drills: drillRecs.sort((a, b) => b.relevanceScore - a.relevanceScore),
+    explanations: explanationRecs.sort((a, b) => b.relevanceScore - a.relevanceScore),
+  }
 }
 
-// PERFECTED: This function now creates a highly targeted workout flow.
-// It prioritizes drills for the day's primary issue and arranges them logically.
-function createTargetedWorkoutFlow(
-  primaryIssueDrills: DrillRecommendation[],
-  secondaryIssueDrills: DrillRecommendation[],
+// UPDATED: Only includes explanation videos if they specifically address the player's issues
+function selectDailyContent(
+  primaryIssue: ShootingIssue,
+  secondaryIssues: ShootingIssue[],
+  drillPool: DrillRecommendation[],
+  explanationPool: DrillRecommendation[],
   isWeek1: boolean,
   dayNumber: number,
 ): DrillRecommendation[] {
-  const targetDrills = 5
-  const flowOrder = isWeek1
-    ? ["foundation", "foundation", "movement", "foundation", "conditioning"]
-    : ["foundation", "movement", "application", "application", "conditioning"]
+  const dailyContent: DrillRecommendation[] = []
+  const usedTitles = new Set<string>()
 
-  const selectedDrills: DrillRecommendation[] = []
-  const usedDrills = new Set<string>()
-
-  // Helper to add a drill to the workout
-  const addDrill = (drill: DrillRecommendation) => {
-    selectedDrills.push(drill)
-    usedDrills.add(drill.drillTitle)
+  const addContent = (item: DrillRecommendation) => {
+    if (item && !usedTitles.has(item.drillTitle)) {
+      dailyContent.push(item)
+      usedTitles.add(item.drillTitle)
+      return true
+    }
+    return false
   }
 
-  // Fill the workout using the logical flow order
-  for (const category of flowOrder) {
-    if (selectedDrills.length >= targetDrills) break
+  // UPDATED: Only add explanation videos on strategic days AND only if they address the player's specific issues
+  const shouldIncludeExplanation = dayNumber === 1 || dayNumber === 8 || dayNumber === 14
 
-    // 1. Prioritize drills for the PRIMARY issue that match the current category
-    const primaryDrill = primaryIssueDrills
-      .filter((d) => d.category === category && !usedDrills.has(d.drillTitle))
-      .sort((a, b) => (isWeek1 ? a.complexity - b.complexity : b.complexity - a.complexity)) // Sort by complexity
-      .shift() // Get the best one
-
-    if (primaryDrill) {
-      addDrill(primaryDrill)
-      continue
+  if (shouldIncludeExplanation && explanationPool.length > 0) {
+    // Select ONE explanation video that specifically addresses the player's issues
+    let explanation = explanationPool.find((exp) => exp.targetIssue === primaryIssue.id)
+    if (!explanation) {
+      for (const issue of secondaryIssues) {
+        explanation = explanationPool.find((exp) => exp.targetIssue === issue.id)
+        if (explanation) break
+      }
     }
-
-    // 2. If no primary drill, use a SECONDARY issue drill for that category
-    const secondaryDrill = secondaryIssueDrills
-      .filter((d) => d.category === category && !usedDrills.has(d.drillTitle))
-      .sort((a, b) => (isWeek1 ? a.complexity - b.complexity : b.complexity - a.complexity))
-      .shift()
-
-    if (secondaryDrill) {
-      addDrill(secondaryDrill)
-      continue
+    if (!explanation) {
+      explanation = explanationPool[0] // Fallback to the first available explanation (which already addresses player's issues)
+    }
+    if (explanation) {
+      addContent(explanation)
     }
   }
 
-  // 3. If the flow is not filled, use any remaining PRIMARY issue drills regardless of category
-  if (selectedDrills.length < targetDrills) {
-    const remainingPrimary = primaryIssueDrills.filter((d) => !usedDrills.has(d.drillTitle))
-    for (const drill of remainingPrimary) {
-      if (selectedDrills.length >= targetDrills) break
-      addDrill(drill)
+  // Select 4-5 drills with a logical flow
+  const drillSlots: ("warmup" | "skill" | "finisher")[] = ["warmup", "skill", "skill", "finisher"]
+  if (!isWeek1) {
+    drillSlots.splice(2, 0, "skill") // Add a 3rd skill drill for week 2
+  }
+
+  drillSlots.forEach((phase) => {
+    let selectedDrill = drillPool.find(
+      (d) => d.workoutPhase === phase && d.targetIssue === primaryIssue.id && !usedTitles.has(d.drillTitle),
+    )
+    if (!selectedDrill) {
+      for (const issue of secondaryIssues) {
+        selectedDrill = drillPool.find(
+          (d) => d.workoutPhase === phase && d.targetIssue === issue.id && !usedTitles.has(d.drillTitle),
+        )
+        if (selectedDrill) break
+      }
+    }
+    if (!selectedDrill) {
+      selectedDrill = drillPool.find((d) => d.workoutPhase === phase && !usedTitles.has(d.drillTitle))
+    }
+    if (selectedDrill) {
+      addContent(selectedDrill)
+    }
+  })
+
+  // Backfill if we don't have enough drills
+  const requiredDrillCount = isWeek1 ? 4 : 5
+  while (dailyContent.filter((c) => c.type === "drill").length < requiredDrillCount) {
+    const nextDrill = drillPool.find((d) => !usedTitles.has(d.drillTitle))
+    if (nextDrill) {
+      addContent(nextDrill)
+    } else {
+      break // No more drills to add
     }
   }
 
-  // 4. If still not filled, use any remaining SECONDARY issue drills
-  if (selectedDrills.length < targetDrills) {
-    const remainingSecondary = secondaryIssueDrills.filter((d) => !usedDrills.has(d.drillTitle))
-    for (const drill of remainingSecondary) {
-      if (selectedDrills.length >= targetDrills) break
-      addDrill(drill)
-    }
-  }
-
-  return selectedDrills
+  // Sort the final list by workout phase order
+  const phaseOrder = { explanation: 1, warmup: 2, skill: 3, finisher: 4 }
+  return dailyContent.sort((a, b) => phaseOrder[a.workoutPhase] - phaseOrder[b.workoutPhase])
 }
 
 // Function to calculate rep counts for ~100 makes total
@@ -751,18 +855,16 @@ function calculateRepCounts(drillCount: number, isWeek1: boolean): { sets: strin
 export function createTrainingPlan(
   playerName: string,
   issues: ShootingIssue[],
-  recommendations: DrillRecommendation[],
+  recommendations: { drills: DrillRecommendation[]; explanations: DrillRecommendation[] },
   skillLevel: "beginner" | "intermediate" | "advanced" | "pro" = "intermediate",
 ) {
-  // If skillLevel is "pro", treat it as "advanced"
   const normalizedSkillLevel = skillLevel === "pro" ? "advanced" : skillLevel
+  const { drills: drillPool, explanations: explanationPool } = recommendations
 
-  // Create issue-specific day titles and descriptions
   const createDayTitleAndDescription = (dayNumber: number, primaryIssue: ShootingIssue, isWeek1: boolean) => {
     const issueDisplayName = primaryIssue.name
 
     if (isWeek1) {
-      // Week 1: Foundation building with specific issue focus
       const foundationTitles = {
         "inconsistent-release": "Building Release Point Consistency",
         "poor-follow-through": "Developing Proper Follow-Through",
@@ -785,38 +887,11 @@ export function createTrainingPlan(
         "off-hand-placement": "Correcting Off-Hand Position",
         "ball-position": "Optimizing Ball Position",
       }
-
-      const foundationDescriptions = {
-        "inconsistent-release": "Focus on developing a repeatable release point through fundamental drills.",
-        "poor-follow-through": "Emphasize proper wrist snap and follow-through mechanics.",
-        "guide-hand-interference": "Learn to position and use your guide hand without affecting the shot.",
-        "thumb-flick": "Eliminate thumb influence and develop clean finger release.",
-        "low-arc": "Establish proper shot trajectory and arc through targeted practice.",
-        "elbow-alignment": "Build proper elbow positioning and stability throughout the shot.",
-        "balance-issues": "Develop a stable shooting base and improve overall balance.",
-        footwork: "Establish proper foot positioning and movement patterns.",
-        "base-width": "Find your optimal stance width for maximum stability.",
-        rhythm: "Develop smooth, consistent timing in your shooting motion.",
-        dipping: "Eliminate unnecessary ball movement and establish efficient motion.",
-        "shot-pocket": "Create a consistent starting position for your shot.",
-        "wrist-snap": "Develop proper wrist flexion and finger control.",
-        alignment: "Build proper body alignment toward the target.",
-        rushing: "Learn to control your shooting tempo and preparation.",
-        "game-transfer": "Build the foundation needed for game application.",
-        consistency: "Establish repeatable mechanics through deliberate practice.",
-        "power-generation": "Learn to generate power efficiently from your legs.",
-        "off-hand-placement": "Position your non-shooting hand correctly.",
-        "ball-position": "Establish optimal ball positioning throughout the shot.",
-      }
-
       return {
         title: `Day ${dayNumber}: ${foundationTitles[primaryIssue.id] || `Addressing ${issueDisplayName}`}`,
-        description:
-          foundationDescriptions[primaryIssue.id] ||
-          `Focus on correcting ${issueDisplayName.toLowerCase()} through fundamental drills.`,
+        description: `Focus on correcting ${issueDisplayName.toLowerCase()} through fundamental drills and targeted practice.`,
       }
     } else {
-      // Week 2: Game application with specific issue focus
       const applicationTitles = {
         "inconsistent-release": "Release Consistency Under Pressure",
         "poor-follow-through": "Follow-Through in Game Situations",
@@ -839,92 +914,65 @@ export function createTrainingPlan(
         "off-hand-placement": "Off-Hand Control in Game Situations",
         "ball-position": "Ball Position During Complex Movements",
       }
-
-      const applicationDescriptions = {
-        "inconsistent-release": "Apply your improved release point in game-like situations and under pressure.",
-        "poor-follow-through": "Maintain proper follow-through during movement and complex shots.",
-        "guide-hand-interference": "Keep guide hand control while shooting off movement and under pressure.",
-        "thumb-flick": "Maintain clean finger release during quick shots and game situations.",
-        "low-arc": "Preserve proper shot arc when shooting under pressure and fatigue.",
-        "elbow-alignment": "Keep elbow stability during movement, turns, and game-speed shots.",
-        "balance-issues": "Apply improved balance in game-like movements and pressure situations.",
-        footwork: "Use advanced footwork patterns in game-simulation drills.",
-        "base-width": "Maintain optimal stance width during movement and quick shots.",
-        rhythm: "Keep smooth rhythm during complex movements and decision-making.",
-        dipping: "Maintain efficient motion during quick shots and game situations.",
-        "shot-pocket": "Keep consistent shot pocket during movement and pressure.",
-        "wrist-snap": "Maintain proper wrist action when fatigued and under pressure.",
-        alignment: "Preserve body alignment during movement and directional changes.",
-        rushing: "Control tempo during quick decisions and pressure situations.",
-        "game-transfer": "Apply all improved mechanics in full game simulation.",
-        consistency: "Maintain consistency during fatigue and pressure situations.",
-        "power-generation": "Generate power efficiently during movement and game situations.",
-        "off-hand-placement": "Keep proper off-hand position during complex movements.",
-        "ball-position": "Maintain optimal ball position during game-speed movements.",
-      }
-
       return {
         title: `Day ${dayNumber}: ${applicationTitles[primaryIssue.id] || `${issueDisplayName} in Game Situations`}`,
-        description:
-          applicationDescriptions[primaryIssue.id] ||
-          `Apply your improved ${issueDisplayName.toLowerCase()} in game-like situations.`,
+        description: `Apply your improved ${issueDisplayName.toLowerCase()} in game-like situations and challenging drills.`,
       }
     }
   }
 
-  // Create a 2-week plan (14 days) with logical workout flow
   const days = Array.from({ length: 14 }, (_, i) => {
     const dayNumber = i + 1
     const isWeek1 = dayNumber <= 7
-
-    // Assign a primary issue for this day by cycling through the issues
     const primaryIssue = issues[i % issues.length]
-
-    // Get the day title and description based on the primary issue
+    const secondaryIssues = issues.filter((issue) => issue.id !== primaryIssue.id)
     const { title, description } = createDayTitleAndDescription(dayNumber, primaryIssue, isWeek1)
 
-    // Create a targeted pool of drills for the day
-    const primaryIssueDrills = recommendations.filter((r) => r.targetIssue === primaryIssue.id)
-    const secondaryIssueDrills = recommendations.filter((r) => r.targetIssue !== primaryIssue.id)
+    const dailyContent = selectDailyContent(
+      primaryIssue,
+      secondaryIssues,
+      drillPool,
+      explanationPool,
+      isWeek1,
+      dayNumber,
+    )
+    const actualDrills = dailyContent.filter((c) => c.type === "drill")
+    const { sets, reps } = calculateRepCounts(actualDrills.length, isWeek1)
 
-    // Create logical workout flow for this day using the targeted drill pools
-    const dayDrills = createTargetedWorkoutFlow(primaryIssueDrills, secondaryIssueDrills, isWeek1, dayNumber)
-
-    // Calculate rep counts for ~100 makes total
-    const { sets, reps } = calculateRepCounts(dayDrills.length, isWeek1)
-
-    // Create the day structure
     return {
       day: dayNumber,
       title,
       description,
-      drills: dayDrills.map((drill) => {
-        // Get the specific issue this drill targets
-        const targetIssue = issues.find((i) => i.id === drill.targetIssue) || primaryIssue
-
-        // Create a personalized explanation that addresses the player's specific issue
+      drills: dailyContent.map((item) => {
+        const targetIssue = issues.find((i) => i.id === item.targetIssue) || primaryIssue
         const personalizedExplanation = generatePersonalizedExplanation(
-          drill.drillTitle,
+          item.drillTitle,
           targetIssue,
           playerName,
-          normalizedSkillLevel as "beginner" | "intermediate" | "advanced",
+          normalizedSkillLevel,
           isWeek1,
         )
 
+        if (item.type === "explanation") {
+          return {
+            name: item.drillTitle,
+            description: `Conceptual understanding for ${targetIssue.name}.`,
+            sets: "N/A",
+            reps: "Watch & Understand",
+            focus: `Understanding ${targetIssue.name}`,
+            explanation: personalizedExplanation,
+            video: item.video,
+          }
+        }
+
         return {
-          name: drill.drillTitle,
-          description: `${drill.drillTitle} - ${drill.explanation}`,
+          name: item.drillTitle,
+          description: `${item.drillTitle} - ${item.explanation}`,
           sets,
           reps,
           focus: `Improving ${targetIssue?.name || "shooting mechanics"}`,
           explanation: personalizedExplanation,
-          video: drill.video
-            ? {
-                title: drill.video.title,
-                description: drill.video.description || `Video demonstration of the ${drill.drillTitle} drill.`,
-                url: drill.video.url,
-              }
-            : undefined,
+          video: item.video,
         }
       }),
       notes: `Day ${dayNumber} focus: ${
@@ -935,10 +983,9 @@ export function createTrainingPlan(
     }
   })
 
-  // Create the complete training plan with a more personalized introduction
   return {
     title: `Two-Week ${issues[0].name} Improvement Program`,
-    introduction: `Welcome to your personalized jump shot training program, ${playerName}! This 2-week course is specifically designed to address your shooting issues: ${issues.map((i) => i.name).join(", ")}. Each day targets specific issues with 4-5 targeted drills totaling approximately 100 makes. The program progresses from fundamental mechanics in Week 1 to game application in Week 2, ensuring you build proper form before applying it under pressure.`,
+    introduction: `Welcome to your personalized jump shot training program, ${playerName}! This 2-week course is specifically designed to address your shooting issues: ${issues.map((i) => i.name).join(", ")}. The program is drill-focused with explanation videos included only when they specifically address your identified issues. Each training day includes 4-5 targeted drills totaling approximately 100 makes. The program progresses from fundamental mechanics in Week 1 to game application in Week 2, ensuring you build proper form before applying it under pressure.`,
     issues: issues.map((i) => i.name),
     days,
   }
