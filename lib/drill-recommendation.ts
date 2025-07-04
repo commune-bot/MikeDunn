@@ -1,5 +1,5 @@
 import type { ShootingIssue } from "./shooting-analysis"
-import { type VideoEntry, videoDatabase } from "./video-database"
+import { type VideoEntry, videoDatabase, loomExplanationVideos } from "./video-database"
 
 export interface DrillProgression {
   beginner: string[]
@@ -14,114 +14,277 @@ export interface DrillRecommendation {
   relevanceScore: number
   explanation: string
   video?: VideoEntry
+  category: "foundation" | "movement" | "application" | "conditioning"
+  complexity: number
 }
 
-// Map of issue IDs to recommended drill progressions
+// Enhanced drill categorization for better workout flow
+const drillCategories = {
+  foundation: [
+    "1 Hand Shooting",
+    "Guide Hand Positioning (KSS)",
+    "Form Shooting",
+    "Ball Raises",
+    "Free Throws",
+    "Wide Stance Shots",
+    "Stabilize The Shooting Elbow",
+    "3 Exercises to Stabilize Elbow and Keep Ball Moving",
+    "Ball Does Not Stop (KSS)",
+    "Wrist Flips",
+    "Layering in the Guide Hand",
+    "Adding Guide Hand - One Hand Shots",
+  ],
+  movement: [
+    "1 2 Through",
+    "1 2 Step With Drop",
+    "Jump Turns With Pass",
+    "Dribble 1-2 Step",
+    "Pullback 1-2 Step",
+    "90 Degree 1 Position Turn",
+    "180 Degree 1 Position Turn",
+    "Cliff Walk (1 Position)",
+    "Forward 1 Position Jog",
+    "Backward 1 Position Jog",
+  ],
+  application: [
+    "Catch and Shoot With Pass Fake",
+    "Jump Turns With A Pass",
+    "Momentum Shots",
+    "Sprint to Corner",
+    "Lateral Movement into DDS",
+    "Ghost Screen into Back Pedal",
+    "Rollouts",
+    "Catch and Shoot (Drop, Left Right, Right Left)",
+    "Backpedal Catch and Shoot",
+  ],
+  conditioning: [
+    "Rapid Fire 1 Minute @ Each of 5 Spots",
+    "100 3's",
+    "Wiper Shooting",
+    "3 Minute 3's",
+    "3 in a Row 5 Spots",
+    "2 In a Row 5 Spots",
+    "The Gauntlet",
+    "Full Court Threes",
+  ],
+}
+
+// Map of issue IDs to recommended drill progressions with better flow structure
 const issueToDrillMap: Record<string, DrillProgression> = {
   "inconsistent-release": {
-    beginner: ["1 Hand Shooting", "Form Shooting", "Ball Raises"],
-    intermediate: ["Guide Hand Positioning (KSS)", "Stabilize The Shooting Elbow", "1 2 Through"],
+    beginner: ["1 Hand Shooting", "Guide Hand Positioning (KSS)", "Ball Raises"],
+    intermediate: ["Stabilize The Shooting Elbow", "Ball Does Not Stop (KSS)", "1 2 Through"],
     advanced: ["Catch and Shoot With Pass Fake", "Jump Turns With Pass", "Momentum Shots"],
   },
   "poor-follow-through": {
-    beginner: ["1 Hand Shooting", "Form Shooting", "Free Throws"],
-    intermediate: [
-      "Ball Does Not Stop (KSS)",
-      "3 Exercises to Stabilize Elbow and Keep Ball Moving",
-      "Stabilize The Shooting Elbow",
-    ],
+    beginner: ["1 Hand Shooting", "3 Exercises to Stabilize Elbow and Keep Ball Moving", "Free Throws"],
+    intermediate: ["Ball Does Not Stop (KSS)", "Stabilize The Shooting Elbow", "1 2 Through"],
     advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With A Pass"],
   },
   "guide-hand-interference": {
-    beginner: ["1 Hand Shooting", "Guide Hand Positioning (KSS)", "Form Shooting"],
-    intermediate: ["Ball Does Not Stop (KSS)", "Free Throws", "1 2 Through"],
+    beginner: ["1 Hand Shooting", "Guide Hand Positioning (KSS)", "Layering in the Guide Hand"],
+    intermediate: ["Ball Does Not Stop (KSS)", "Adding Guide Hand - One Hand Shots", "1 2 Through"],
     advanced: ["Catch and Shoot With Pass Fake", "Jump Turns With Pass", "Momentum Shots"],
   },
   "thumb-flick": {
-    beginner: ["Guide Hand Positioning (KSS)", "1 Hand Shooting", "Form Shooting"],
+    beginner: ["Guide Hand Positioning (KSS)", "1 Hand Shooting", "Wrist Flips"],
     intermediate: ["Ball Does Not Stop (KSS)", "Stabilize The Shooting Elbow", "Free Throws"],
     advanced: ["Catch and Shoot With Pass Fake", "Jump Turns With Pass", "Momentum Shots"],
   },
   "low-arc": {
-    beginner: ["Form Shooting", "Flat Side Backboard Shots", "Skinny Side Backboard Shots"],
-    intermediate: ["1 Hand Shooting", "Ball Raises", "Free Throws"],
+    beginner: ["Skinny Side Backboard Shots", "Flat Side Backboard Shots", "Ball Raises"],
+    intermediate: ["1 Hand Shooting", "High Ball Drop", "Free Throws"],
     advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With A Pass"],
   },
   "elbow-alignment": {
-    beginner: ["Stabilize The Shooting Elbow", "3 Exercises to Stabilize Elbow and Keep Ball Moving", "Form Shooting"],
+    beginner: [
+      "Stabilize The Shooting Elbow",
+      "3 Exercises to Stabilize Elbow and Keep Ball Moving",
+      "Wide Stance Shots",
+    ],
     intermediate: ["1 2 Through", "Ball Does Not Stop (KSS)", "Free Throws"],
-    advanced: ["Elbow Push Out With Stop", "Elbow Push Outs No Stop", "Catch and Shoot With Pass Fake"],
+    advanced: ["Catch and Shoot With Pass Fake", "Jump Turns With Pass", "Momentum Shots"],
   },
   "balance-issues": {
     beginner: ["Wide Stance Shots", "1 Foot Drops", "1 Foot Elevator Drops"],
-    intermediate: ["1 2 Step With Drop", "Jump Turns With Pass", "90 Degree Elevator Drops Off Dribble"],
-    advanced: ["Backward Forward Hops", "180 Degree 1 Position Turn", "Sprint to Corner"],
+    intermediate: ["1 2 Step With Drop", "Jump Turns With Pass", "90 Degree 1 Position Turn"],
+    advanced: ["Sprint to Corner", "Lateral Movement into DDS", "Ghost Screen into Back Pedal"],
   },
   footwork: {
-    beginner: ["1 2 Step With Drop", "1 2 Through", "Form Shooting"],
-    intermediate: ["Jump Turns With Pass", "Jump Turns With A Pass", "Dribble 1-2 Step"],
-    advanced: ["Sprint to Top of Key with Drop", "Lateral Movement into DDS", "180 Degree 1 Position Step Drop"],
+    beginner: ["1 2 Step With Drop", "1 2 Through", "Wide Stance Shots"],
+    intermediate: ["Jump Turns With Pass", "Dribble 1-2 Step", "90 Degree 1 Position Turn"],
+    advanced: ["Sprint to Corner", "Lateral Movement into DDS", "180 Degree 1 Position Turn"],
   },
   "base-width": {
-    beginner: ["Wide Stance Shots", "Form Shooting", "Free Throws"],
-    intermediate: ["1 2 Step With Drop", "Jump Turns With Pass", "1 Foot Drops"],
+    beginner: ["Wide Stance Shots", "1 2 Step With Drop", "Free Throws"],
+    intermediate: ["Jump Turns With Pass", "1 Foot Drops", "1 2 Through"],
     advanced: ["Momentum Shots", "Jump Turns With A Pass", "Sprint to Corner"],
   },
   rhythm: {
     beginner: ["Ball Does Not Stop (KSS)", "1 2 Through", "Ball Raises"],
-    intermediate: ["1-2-Thru Slow Mo (self)", "1-2-Thru With Stop at Hoop", "Slow Motion 1-2-Thru @ Hoop"],
+    intermediate: ["Slow Motion 1-2-Thru @ Hoop", "1-2-Thru With Stop at Hoop", "High Ball Drop"],
     advanced: ["Momentum Shots", "Catch and Shoot With Pass Fake", "Jump Turns With A Pass"],
   },
   dipping: {
-    beginner: ["Ball Raises", "High Ball Drop", "Form Shooting"],
-    intermediate: ["Ball Does Not Stop (KSS)", "1 2 Through", "Pullback with Drop"],
-    advanced: ["Catch and Shoot Off Drop", "DDS Fake Pass", "Momentum Shots"],
+    beginner: ["Ball Raises", "High Ball Drop", "Ball Does Not Stop (KSS)"],
+    intermediate: ["1 2 Through", "Pullback with Drop", "Free Throws"],
+    advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With Pass"],
   },
   "shot-pocket": {
-    beginner: ["Ball Raises", "Pullback with Drop", "Form Shooting"],
-    intermediate: ["1 2 Through", "Ball Does Not Stop (KSS)", "High Ball Drop"],
-    advanced: ["Catch and Shoot Off Drop", "DDS Fake Pass", "Momentum Shots"],
+    beginner: ["Ball Raises", "High Ball Drop", "Pullback with Drop"],
+    intermediate: ["1 2 Through", "Ball Does Not Stop (KSS)", "Free Throws"],
+    advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With Pass"],
   },
   "wrist-snap": {
-    beginner: ["1 Hand Shooting", "Form Shooting", "Free Throws"],
+    beginner: ["1 Hand Shooting", "Wrist Flips", "Free Throws"],
     intermediate: ["Ball Does Not Stop (KSS)", "Stabilize The Shooting Elbow", "1 2 Through"],
     advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With A Pass"],
   },
   alignment: {
-    beginner: ["Form Shooting", "Wide Stance Shots", "Free Throws"],
-    intermediate: ["1 2 Step With Drop", "Jump Turns With Pass", "1 2 Through"],
+    beginner: ["Wide Stance Shots", "Free Throws", "1 2 Step With Drop"],
+    intermediate: ["Jump Turns With Pass", "1 2 Through", "90 Degree 1 Position Turn"],
     advanced: ["Momentum Shots", "Jump Turns With A Pass", "Catch and Shoot With Pass Fake"],
   },
   rushing: {
-    beginner: ["Form Shooting", "Free Throws", "1 2 Through"],
-    intermediate: ["1-2-Thru Slow Mo (self)", "Slow Motion 1-2-Thru @ Hoop", "Ball Does Not Stop (KSS)"],
-    advanced: ["Catch and Shoot With Pass Fake", "Jump Turns With Pass", "DDS Fake Pass"],
+    beginner: ["Free Throws", "Slow Motion 1-2-Thru @ Hoop", "1 2 Through"],
+    intermediate: ["1-2-Thru With Stop at Hoop", "Ball Does Not Stop (KSS)", "High Ball Drop"],
+    advanced: ["Catch and Shoot With Pass Fake", "Jump Turns With Pass", "Momentum Shots"],
   },
   "game-transfer": {
-    beginner: ["Form Shooting", "Free Throws", "Catch and Shoot With Pass Fake"],
-    intermediate: ["Jump Turns With Pass", "Momentum Shots", "Jump Turns With A Pass"],
-    advanced: ["Sprint to Corner", "Lateral Movement into DDS", "DDS Angle"],
+    beginner: ["Free Throws", "Catch and Shoot With Pass Fake", "Jump Turns With Pass"],
+    intermediate: ["Momentum Shots", "Jump Turns With A Pass", "Sprint to Corner"],
+    advanced: ["Lateral Movement into DDS", "Ghost Screen into Back Pedal", "The Gauntlet"],
   },
   consistency: {
-    beginner: ["Form Shooting", "Free Throws", "1 Hand Shooting"],
-    intermediate: ["Ball Does Not Stop (KSS)", "1 2 Through", "Ball Raises"],
-    advanced: ["Shoot Until I Miss 2 in a Row 5 Spots", "Full Court Threes", "Momentum Shots"],
+    beginner: ["Free Throws", "1 Hand Shooting", "Ball Does Not Stop (KSS)"],
+    intermediate: ["1 2 Through", "Ball Raises", "Rapid Fire 1 Minute @ Each of 5 Spots"],
+    advanced: ["100 3's", "3 Minute 3's", "The Gauntlet"],
   },
   "power-generation": {
-    beginner: ["1 2 Step With Drop", "Wide Stance Shots", "Form Shooting"],
+    beginner: ["1 2 Step With Drop", "Wide Stance Shots", "High Ball Drop"],
     intermediate: ["1 2 Through", "Jump Turns With Pass", "Momentum Shots"],
-    advanced: ["Sprint to Corner", "Jump Turns With A Pass", "Catch and Shoot With Pass Fake"],
+    advanced: ["Sprint to Corner", "Jump Turns With A Pass", "Lateral Movement into DDS"],
   },
   "off-hand-placement": {
-    beginner: ["Guide Hand Positioning (KSS)", "1 Hand Shooting", "Form Shooting"],
-    intermediate: ["Ball Does Not Stop (KSS)", "Free Throws", "1 2 Through"],
+    beginner: ["Guide Hand Positioning (KSS)", "1 Hand Shooting", "Layering in the Guide Hand"],
+    intermediate: ["Ball Does Not Stop (KSS)", "Adding Guide Hand - One Hand Shots", "Free Throws"],
     advanced: ["Catch and Shoot With Pass Fake", "Jump Turns With Pass", "Momentum Shots"],
   },
   "ball-position": {
-    beginner: ["Ball Raises", "Pullback with Drop", "High Ball Drop"],
-    intermediate: ["1 2 Through", "Ball Does Not Stop (KSS)", "Form Shooting"],
-    advanced: ["Catch and Shoot Off Drop", "DDS Fake Pass", "Momentum Shots"],
+    beginner: ["Ball Raises", "High Ball Drop", "Pullback with Drop"],
+    intermediate: ["1 2 Through", "Ball Does Not Stop (KSS)", "Free Throws"],
+    advanced: ["Catch and Shoot With Pass Fake", "Momentum Shots", "Jump Turns With Pass"],
   },
+}
+
+// Function to find video for a drill, checking both databases
+function findVideoForDrill(drillTitle: string): VideoEntry | undefined {
+  // First check the main video database
+  let video = videoDatabase.find((v) => v.title === drillTitle)
+
+  if (video) {
+    return video
+  }
+
+  // If not found, check for partial matches in main database
+  video = videoDatabase.find(
+    (v) =>
+      v.title.toLowerCase().includes(drillTitle.toLowerCase()) ||
+      drillTitle.toLowerCase().includes(v.title.toLowerCase()),
+  )
+
+  if (video) {
+    return video
+  }
+
+  // Check the Loom explanation videos
+  video = loomExplanationVideos.find((v) => v.title === drillTitle)
+
+  if (video) {
+    return video
+  }
+
+  // Check for partial matches in Loom videos
+  video = loomExplanationVideos.find(
+    (v) =>
+      v.title.toLowerCase().includes(drillTitle.toLowerCase()) ||
+      drillTitle.toLowerCase().includes(v.title.toLowerCase()),
+  )
+
+  if (video) {
+    return video
+  }
+
+  // If still no match, create a fallback video entry
+  return {
+    title: `${drillTitle} Demonstration`,
+    description: `Video demonstration of the ${drillTitle} drill`,
+    url: "https://youtu.be/8MyR2srjCRA", // Default to Free Throws video as fallback
+    type: "youtube",
+  }
+}
+
+// Function to categorize a drill
+function categorizeDrill(drillTitle: string): "foundation" | "movement" | "application" | "conditioning" {
+  for (const [category, drills] of Object.entries(drillCategories)) {
+    if (drills.includes(drillTitle)) {
+      return category as "foundation" | "movement" | "application" | "conditioning"
+    }
+  }
+
+  // Default categorization based on drill name
+  const lowerTitle = drillTitle.toLowerCase()
+  if (lowerTitle.includes("form") || lowerTitle.includes("hand") || lowerTitle.includes("stance")) {
+    return "foundation"
+  } else if (lowerTitle.includes("step") || lowerTitle.includes("turn") || lowerTitle.includes("position")) {
+    return "movement"
+  } else if (lowerTitle.includes("catch") || lowerTitle.includes("sprint") || lowerTitle.includes("game")) {
+    return "application"
+  } else {
+    return "conditioning"
+  }
+}
+
+// Function to assign complexity score (1-10, where 1 is simplest)
+function getComplexityScore(drillTitle: string, category: string): number {
+  const complexityMap = {
+    foundation: {
+      "1 Hand Shooting": 1,
+      "Guide Hand Positioning (KSS)": 2,
+      "Form Shooting": 1,
+      "Ball Raises": 2,
+      "Free Throws": 1,
+      "Wide Stance Shots": 2,
+      "Stabilize The Shooting Elbow": 3,
+      "3 Exercises to Stabilize Elbow and Keep Ball Moving": 4,
+      "Ball Does Not Stop (KSS)": 3,
+      "Wrist Flips": 2,
+    },
+    movement: {
+      "1 2 Through": 3,
+      "1 2 Step With Drop": 4,
+      "Jump Turns With Pass": 5,
+      "Dribble 1-2 Step": 4,
+      "Pullback 1-2 Step": 5,
+      "90 Degree 1 Position Turn": 4,
+      "180 Degree 1 Position Turn": 6,
+    },
+    application: {
+      "Catch and Shoot With Pass Fake": 6,
+      "Jump Turns With A Pass": 7,
+      "Momentum Shots": 5,
+      "Sprint to Corner": 6,
+      "Lateral Movement into DDS": 7,
+      "Ghost Screen into Back Pedal": 8,
+    },
+    conditioning: {
+      "Rapid Fire 1 Minute @ Each of 5 Spots": 7,
+      "100 3's": 8,
+      "The Gauntlet": 10,
+    },
+  }
+
+  return complexityMap[category]?.[drillTitle] || 5 // Default to medium complexity
 }
 
 // Explanations for why each drill helps with specific issues
@@ -234,15 +397,10 @@ const drillExplanations: Record<string, Record<string, string>> = {
     "base-width": "Develops awareness of weight distribution when transitioning between feet.",
     default: "Improves balance and weight distribution awareness through controlled movements.",
   },
-  "90 Degree Elevator Drops Off Dribble": {
-    "balance-issues": "Challenges balance during turning movements with progressive lowering.",
+  "90 Degree 1 Position Turn": {
+    "balance-issues": "Challenges balance during turning movements.",
     footwork: "Develops footwork and balance when changing directions.",
     default: "Improves balance and body control during directional changes.",
-  },
-  "Backward Forward Hops": {
-    "balance-issues": "Challenges balance during multi-directional movement.",
-    footwork: "Develops coordinated footwork during complex movements.",
-    default: "Improves balance and body control during multi-directional movements.",
   },
   "180 Degree 1 Position Turn": {
     "balance-issues": "Challenges balance during significant directional changes.",
@@ -254,40 +412,15 @@ const drillExplanations: Record<string, Record<string, string>> = {
     footwork: "Develops proper footwork when transitioning from sprinting to shooting.",
     default: "Improves shooting readiness and accuracy after sprinting to a spot.",
   },
-  "Sprint to Top of Key with Drop": {
-    footwork: "Develops proper footwork when transitioning from sprinting to shooting.",
-    "game-transfer": "Simulates game-like movement to common shooting positions.",
-    default: "Improves shooting readiness and accuracy after sprinting to a spot.",
-  },
   "Lateral Movement into DDS": {
     footwork: "Develops coordinated footwork during lateral movement into a shot.",
     "game-transfer": "Simulates game-like lateral movement followed by shooting.",
     default: "Improves footwork and shooting accuracy after lateral movement.",
   },
-  "180 Degree 1 Position Step Drop": {
-    footwork: "Develops advanced footwork during significant directional changes.",
-    "balance-issues": "Challenges balance during complex turning movements.",
-    default: "Improves footwork and balance during major directional changes.",
-  },
-  "Flat Side Backboard Shots": {
-    "low-arc": "Directly addresses shot arc by requiring proper trajectory to hit the target.",
-    alignment: "Reinforces proper alignment and aim through target practice.",
-    default: "Improves shot arc and accuracy through targeted practice.",
-  },
-  "Skinny Side Backboard Shots": {
-    "low-arc": "Develops proper shot arc by requiring precise trajectory to hit the target.",
-    alignment: "Reinforces proper alignment and aim through challenging target practice.",
-    default: "Improves shot arc and accuracy through precise target practice.",
-  },
-  "Elbow Push Out With Stop": {
-    "elbow-alignment": "Develops proper elbow alignment during movement and stopping.",
-    "balance-issues": "Improves balance when transitioning from movement to a stopped position.",
-    default: "Improves elbow alignment and balance during movement and stopping.",
-  },
-  "Elbow Push Outs No Stop": {
-    "elbow-alignment": "Develops proper elbow alignment during continuous movement.",
-    "balance-issues": "Challenges balance during movement without stopping.",
-    default: "Improves elbow alignment and balance during continuous movement.",
+  "Ghost Screen into Back Pedal": {
+    footwork: "Develops footwork when transitioning from forward to backward movement.",
+    "game-transfer": "Simulates game-like screen reactions and movement patterns.",
+    default: "Improves footwork and shooting readiness after complex movements.",
   },
   "High Ball Drop": {
     dipping: "Establishes a proper floor for the ball to prevent unnecessary dipping.",
@@ -300,75 +433,70 @@ const drillExplanations: Record<string, Record<string, string>> = {
     "ball-position": "Reinforces proper relationship between the ball and body.",
     default: "Improves ball positioning and preparation for the shot.",
   },
-  "Catch and Shoot Off Drop": {
-    dipping: "Teaches efficient preparation without unnecessary ball movement.",
-    "shot-pocket": "Reinforces proper ball positioning when catching and shooting.",
-    default: "Improves shooting readiness and efficiency when catching passes.",
+  "Skinny Side Backboard Shots": {
+    "low-arc": "Develops proper shot arc by requiring precise trajectory to hit the target.",
+    alignment: "Reinforces proper alignment and aim through challenging target practice.",
+    default: "Improves shot arc and accuracy through precise target practice.",
   },
-  "DDS Fake Pass": {
-    rushing: "Develops proper timing and preparation when making quick decisions.",
-    "game-transfer": "Simulates game-like decision-making and shooting under pressure.",
-    default: "Improves decision-making and shooting readiness in game-like situations.",
+  "Flat Side Backboard Shots": {
+    "low-arc": "Directly addresses shot arc by requiring proper trajectory to hit the target.",
+    alignment: "Reinforces proper alignment and aim through target practice.",
+    default: "Improves shot arc and accuracy through targeted practice.",
   },
-  "DDS Angle": {
-    "game-transfer": "Simulates game-like directional changes before shooting.",
-    footwork: "Develops proper footwork when changing directions before shooting.",
-    default: "Improves footwork and shooting accuracy after directional changes.",
+  "Wrist Flips": {
+    "wrist-snap": "Develops proper wrist flexion and finger control for better release.",
+    "thumb-flick": "Helps eliminate thumb influence by focusing on proper finger action.",
+    default: "Improves wrist action and finger control for a cleaner release.",
   },
-  "Shoot Until I Miss 2 in a Row 5 Spots": {
-    consistency: "Challenges shooting consistency through a competitive format.",
-    "mental-focus": "Develops mental toughness and focus under pressure.",
-    default: "Improves shooting consistency and mental focus through competition.",
+  "Layering in the Guide Hand": {
+    "guide-hand-interference": "Teaches gradual integration of the guide hand without interference.",
+    "off-hand-placement": "Develops proper guide hand positioning through progressive training.",
+    default: "Gradually integrates proper guide hand positioning into the shooting motion.",
   },
-  "Full Court Threes": {
-    consistency: "Challenges shooting consistency while managing fatigue.",
-    conditioning: "Develops shooting accuracy under physical stress.",
-    default: "Improves shooting consistency and conditioning simultaneously.",
-  },
-  "1-2-Thru Slow Mo (self)": {
-    rhythm: "Develops awareness of proper sequencing through slow-motion practice.",
-    rushing: "Teaches proper pacing and sequencing to prevent rushing.",
-    default: "Improves shooting rhythm and sequencing through deliberate practice.",
-  },
-  "1-2-Thru With Stop at Hoop": {
-    rhythm: "Reinforces proper sequencing with a defined stopping point.",
-    rushing: "Teaches proper preparation and timing before shooting.",
-    default: "Improves shooting preparation and sequencing.",
+  "Adding Guide Hand - One Hand Shots": {
+    "guide-hand-interference": "Teaches proper guide hand integration after establishing shooting hand mechanics.",
+    "off-hand-placement": "Develops correct guide hand positioning and role.",
+    default: "Integrates proper guide hand positioning after establishing shooting hand fundamentals.",
   },
   "Slow Motion 1-2-Thru @ Hoop": {
     rhythm: "Develops awareness of proper sequencing through slow-motion practice at the hoop.",
     rushing: "Teaches proper pacing and sequencing to prevent rushing.",
     default: "Improves shooting rhythm and sequencing through deliberate practice at the hoop.",
   },
-  "Rollout with Slides": {
-    footwork: "Develops lateral movement and positioning for shooting.",
-    "game-transfer": "Simulates game-like reactions to moving balls.",
-    default: "Improves footwork and shooting readiness after lateral movement.",
-  },
-  "Jab Phase III": {
-    footwork: "Develops advanced footwork with multiple jab steps.",
-    "balance-issues": "Challenges balance during complex movements.",
-    default: "Improves footwork and balance during complex jab movements.",
-  },
-  "Dribble 1-2 Step With Ball Raise": {
-    footwork: "Develops proper stepping pattern when shooting off the dribble.",
-    "ball-position": "Reinforces proper ball raising motion during the shot.",
-    default: "Improves footwork and ball positioning when shooting off the dribble.",
-  },
-  DDS: {
-    footwork: "Develops proper footwork when shooting off the dribble.",
-    "balance-issues": "Improves balance when transitioning from dribble to shot.",
-    default: "Improves footwork and balance when shooting off the dribble.",
+  "1-2-Thru With Stop at Hoop": {
+    rhythm: "Reinforces proper sequencing with a defined stopping point.",
+    rushing: "Teaches proper preparation and timing before shooting.",
+    default: "Improves shooting preparation and sequencing.",
   },
   "Dribble 1-2 Step": {
     footwork: "Develops proper stepping pattern when shooting off the dribble.",
     "balance-issues": "Improves balance when transitioning from dribble to shot.",
     default: "Improves footwork and balance when shooting off the dribble.",
   },
-  "90 Degree Dribble Turns": {
-    footwork: "Develops proper footwork when turning with the dribble.",
-    "balance-issues": "Challenges balance during turning movements with the dribble.",
-    default: "Improves footwork and balance during turning movements with the dribble.",
+  "Pullback 1-2 Step": {
+    footwork: "Develops proper footwork when creating space with a pullback dribble.",
+    "balance-issues": "Improves balance when transitioning from movement to shooting.",
+    default: "Improves footwork and balance when creating space before shooting.",
+  },
+  "Rapid Fire 1 Minute @ Each of 5 Spots": {
+    consistency: "Challenges shooting consistency through timed repetition.",
+    conditioning: "Develops shooting accuracy under time pressure and fatigue.",
+    default: "Improves shooting consistency and conditioning through timed practice.",
+  },
+  "100 3's": {
+    consistency: "Challenges shooting consistency through high-volume practice.",
+    conditioning: "Develops shooting accuracy under fatigue.",
+    default: "Improves shooting consistency and endurance through volume practice.",
+  },
+  "3 Minute 3's": {
+    consistency: "Challenges shooting consistency under time pressure.",
+    conditioning: "Develops shooting accuracy under fatigue and time constraints.",
+    default: "Improves shooting consistency and conditioning under time pressure.",
+  },
+  "The Gauntlet": {
+    "game-transfer": "Simulates high-pressure game situations with multiple challenges.",
+    conditioning: "Develops shooting accuracy under extreme fatigue and pressure.",
+    default: "Improves shooting performance under maximum pressure and fatigue.",
   },
 }
 
@@ -457,9 +585,7 @@ function generatePersonalizedExplanation(
   return `${skillPhrase} ${issue.name.toLowerCase()}. ${baseExplanation} ${phasePhrase} ${issue.name.toLowerCase()}. ${outcome} ${mikeDunnPhrase}`
 }
 
-// Improve the drill recommendation algorithm to better match issues with drills
-
-// Update the getDrillRecommendations function to improve relevance scoring
+// Update the getDrillRecommendations function to include categorization and complexity
 export function getDrillRecommendations(
   issues: ShootingIssue[],
   skillLevel: "beginner" | "intermediate" | "advanced" | "pro" = "intermediate",
@@ -480,7 +606,7 @@ export function getDrillRecommendations(
     // Add each drill to recommendations with explanations and improved relevance scoring
     drillsForIssue.forEach((drillTitle, drillIndex) => {
       // Find the video entry for this drill
-      const video = videoDatabase.find((v) => v.title === drillTitle)
+      const video = findVideoForDrill(drillTitle)
 
       // Get the explanation for why this drill helps with this issue
       const explanation =
@@ -492,6 +618,10 @@ export function getDrillRecommendations(
       // Drills earlier in the list for each issue are considered more relevant
       const positionScore = Math.max(1, 5 - drillIndex) / 5 // 1.0, 0.8, 0.6, 0.4, 0.2...
       const relevanceScore = issuePriorityMultiplier * positionScore
+
+      // Categorize the drill and get complexity
+      const category = categorizeDrill(drillTitle)
+      const complexity = getComplexityScore(drillTitle, category)
 
       // Check if this drill is already in recommendations
       const existingRec = recommendations.find((rec) => rec.drillTitle === drillTitle)
@@ -510,6 +640,8 @@ export function getDrillRecommendations(
           relevanceScore,
           explanation,
           video,
+          category,
+          complexity,
         })
       }
     })
@@ -519,7 +651,103 @@ export function getDrillRecommendations(
   return recommendations.sort((a, b) => b.relevanceScore - a.relevanceScore)
 }
 
-// Update the createTrainingPlan function to create more varied daily plans with specific issue focus
+// PERFECTED: This function now creates a highly targeted workout flow.
+// It prioritizes drills for the day's primary issue and arranges them logically.
+function createTargetedWorkoutFlow(
+  primaryIssueDrills: DrillRecommendation[],
+  secondaryIssueDrills: DrillRecommendation[],
+  isWeek1: boolean,
+  dayNumber: number,
+): DrillRecommendation[] {
+  const targetDrills = 5
+  const flowOrder = isWeek1
+    ? ["foundation", "foundation", "movement", "foundation", "conditioning"]
+    : ["foundation", "movement", "application", "application", "conditioning"]
+
+  const selectedDrills: DrillRecommendation[] = []
+  const usedDrills = new Set<string>()
+
+  // Helper to add a drill to the workout
+  const addDrill = (drill: DrillRecommendation) => {
+    selectedDrills.push(drill)
+    usedDrills.add(drill.drillTitle)
+  }
+
+  // Fill the workout using the logical flow order
+  for (const category of flowOrder) {
+    if (selectedDrills.length >= targetDrills) break
+
+    // 1. Prioritize drills for the PRIMARY issue that match the current category
+    const primaryDrill = primaryIssueDrills
+      .filter((d) => d.category === category && !usedDrills.has(d.drillTitle))
+      .sort((a, b) => (isWeek1 ? a.complexity - b.complexity : b.complexity - a.complexity)) // Sort by complexity
+      .shift() // Get the best one
+
+    if (primaryDrill) {
+      addDrill(primaryDrill)
+      continue
+    }
+
+    // 2. If no primary drill, use a SECONDARY issue drill for that category
+    const secondaryDrill = secondaryIssueDrills
+      .filter((d) => d.category === category && !usedDrills.has(d.drillTitle))
+      .sort((a, b) => (isWeek1 ? a.complexity - b.complexity : b.complexity - a.complexity))
+      .shift()
+
+    if (secondaryDrill) {
+      addDrill(secondaryDrill)
+      continue
+    }
+  }
+
+  // 3. If the flow is not filled, use any remaining PRIMARY issue drills regardless of category
+  if (selectedDrills.length < targetDrills) {
+    const remainingPrimary = primaryIssueDrills.filter((d) => !usedDrills.has(d.drillTitle))
+    for (const drill of remainingPrimary) {
+      if (selectedDrills.length >= targetDrills) break
+      addDrill(drill)
+    }
+  }
+
+  // 4. If still not filled, use any remaining SECONDARY issue drills
+  if (selectedDrills.length < targetDrills) {
+    const remainingSecondary = secondaryIssueDrills.filter((d) => !usedDrills.has(d.drillTitle))
+    for (const drill of remainingSecondary) {
+      if (selectedDrills.length >= targetDrills) break
+      addDrill(drill)
+    }
+  }
+
+  return selectedDrills
+}
+
+// Function to calculate rep counts for ~100 makes total
+function calculateRepCounts(drillCount: number, isWeek1: boolean): { sets: string; reps: string } {
+  if (drillCount === 0) return { sets: "3", reps: "10 makes per set" }
+
+  const targetMakes = 100
+  const makesPerDrill = Math.floor(targetMakes / drillCount)
+
+  if (isWeek1) {
+    // Week 1: More sets, fewer reps per set (focus on form)
+    const sets = Math.max(3, Math.floor(makesPerDrill / 8))
+    const repsPerSet = Math.ceil(makesPerDrill / sets)
+    return {
+      sets: sets.toString(),
+      reps: `${repsPerSet} makes per set`,
+    }
+  } else {
+    // Week 2: Fewer sets, more reps per set (focus on endurance)
+    const sets = Math.max(2, Math.floor(makesPerDrill / 12))
+    const repsPerSet = Math.ceil(makesPerDrill / sets)
+    return {
+      sets: sets.toString(),
+      reps: `${repsPerSet} makes per set`,
+    }
+  }
+}
+
+// Update the createTrainingPlan function with improved workout flow
 export function createTrainingPlan(
   playerName: string,
   issues: ShootingIssue[],
@@ -528,18 +756,6 @@ export function createTrainingPlan(
 ) {
   // If skillLevel is "pro", treat it as "advanced"
   const normalizedSkillLevel = skillLevel === "pro" ? "advanced" : skillLevel
-
-  // Group recommendations by target issue
-  const recommendationsByIssue = recommendations.reduce(
-    (acc, rec) => {
-      if (!acc[rec.targetIssue]) {
-        acc[rec.targetIssue] = []
-      }
-      acc[rec.targetIssue].push(rec)
-      return acc
-    },
-    {} as Record<string, DrillRecommendation[]>,
-  )
 
   // Create issue-specific day titles and descriptions
   const createDayTitleAndDescription = (dayNumber: number, primaryIssue: ShootingIssue, isWeek1: boolean) => {
@@ -656,55 +872,33 @@ export function createTrainingPlan(
     }
   }
 
-  // Create a 2-week plan (14 days) with specific issue focus for each day
+  // Create a 2-week plan (14 days) with logical workout flow
   const days = Array.from({ length: 14 }, (_, i) => {
     const dayNumber = i + 1
     const isWeek1 = dayNumber <= 7
 
     // Assign a primary issue for this day by cycling through the issues
-    const primaryIssueIndex = i % issues.length
-    const primaryIssue = issues[primaryIssueIndex]
+    const primaryIssue = issues[i % issues.length]
 
     // Get the day title and description based on the primary issue
     const { title, description } = createDayTitleAndDescription(dayNumber, primaryIssue, isWeek1)
 
-    // Get drills specifically for this day's primary issue
-    const primaryIssueRecs = recommendationsByIssue[primaryIssue.id] || []
+    // Create a targeted pool of drills for the day
+    const primaryIssueDrills = recommendations.filter((r) => r.targetIssue === primaryIssue.id)
+    const secondaryIssueDrills = recommendations.filter((r) => r.targetIssue !== primaryIssue.id)
 
-    // Also include some drills from secondary issues (but fewer)
-    const secondaryIssues = issues.filter((_, index) => index !== primaryIssueIndex)
-    const secondaryRecs = secondaryIssues
-      .slice(0, 2)
-      .flatMap((issue) => (recommendationsByIssue[issue.id] || []).slice(0, 1))
+    // Create logical workout flow for this day using the targeted drill pools
+    const dayDrills = createTargetedWorkoutFlow(primaryIssueDrills, secondaryIssueDrills, isWeek1, dayNumber)
 
-    // Combine primary and secondary recommendations
-    const allDayRecs = [...primaryIssueRecs.slice(0, 3), ...secondaryRecs]
-
-    // Take different drills each day using a rotation pattern
-    const offset = (dayNumber - 1) % Math.max(1, allDayRecs.length)
-    let dayDrills = allDayRecs.slice(offset, offset + 3)
-
-    // If we don't have enough drills, wrap around
-    if (dayDrills.length < 3 && allDayRecs.length > 0) {
-      const remaining = 3 - dayDrills.length
-      dayDrills = [...dayDrills, ...allDayRecs.slice(0, remaining)]
-    }
-
-    // Ensure we have at least some drills
-    if (dayDrills.length === 0 && recommendations.length > 0) {
-      dayDrills = recommendations.slice(0, 3)
-    }
-
-    // Limit to appropriate number of drills based on skill level
-    const maxDrills = normalizedSkillLevel === "beginner" ? 3 : normalizedSkillLevel === "intermediate" ? 4 : 5
-    const finalDrills = dayDrills.slice(0, Math.min(maxDrills, dayDrills.length))
+    // Calculate rep counts for ~100 makes total
+    const { sets, reps } = calculateRepCounts(dayDrills.length, isWeek1)
 
     // Create the day structure
     return {
       day: dayNumber,
       title,
       description,
-      drills: finalDrills.map((drill) => {
+      drills: dayDrills.map((drill) => {
         // Get the specific issue this drill targets
         const targetIssue = issues.find((i) => i.id === drill.targetIssue) || primaryIssue
 
@@ -720,8 +914,8 @@ export function createTrainingPlan(
         return {
           name: drill.drillTitle,
           description: `${drill.drillTitle} - ${drill.explanation}`,
-          sets: isWeek1 ? "3" : "4",
-          reps: isWeek1 ? "10 makes per set" : "8 makes per set",
+          sets,
+          reps,
           focus: `Improving ${targetIssue?.name || "shooting mechanics"}`,
           explanation: personalizedExplanation,
           video: drill.video
@@ -737,14 +931,14 @@ export function createTrainingPlan(
         isWeek1
           ? `Building proper mechanics to address ${primaryIssue.name.toLowerCase()}`
           : `Applying improved ${primaryIssue.name.toLowerCase()} under game-like conditions`
-      }. Remember to focus on quality repetitions rather than quantity, ${playerName}.`,
+      }. Target ~100 makes total across all drills. Remember to focus on quality repetitions rather than quantity, ${playerName}.`,
     }
   })
 
   // Create the complete training plan with a more personalized introduction
   return {
     title: `Two-Week ${issues[0].name} Improvement Program`,
-    introduction: `Welcome to your personalized jump shot training program, ${playerName}! This 2-week course is specifically designed to address your shooting issues: ${issues.map((i) => i.name).join(", ")}. Each day targets specific issues with targeted drills and video demonstrations. The program progresses from fundamental mechanics in Week 1 to game application in Week 2, ensuring you build proper form before applying it under pressure.`,
+    introduction: `Welcome to your personalized jump shot training program, ${playerName}! This 2-week course is specifically designed to address your shooting issues: ${issues.map((i) => i.name).join(", ")}. Each day targets specific issues with 4-5 targeted drills totaling approximately 100 makes. The program progresses from fundamental mechanics in Week 1 to game application in Week 2, ensuring you build proper form before applying it under pressure.`,
     issues: issues.map((i) => i.name),
     days,
   }
